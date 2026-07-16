@@ -19,7 +19,7 @@ Depois da publicação, adicione a origem HTTPS do sistema às origens autorizad
 
 ## PWA
 
-A versão publicada registra `ticket-service-worker-v140.js` e utiliza o cache `ticket-shell-v140`. Em localhost, o service worker é removido para evitar que versões antigas sejam carregadas.
+A versão publicada registra `ticket-service-worker-v143.js` e utiliza o cache `ticket-shell-v143`. Em localhost, o service worker é removido para evitar que versões antigas sejam carregadas.
 
 ## Observação de segurança
 

@@ -1,0 +1,11 @@
+TICKET. WEB 1.4.3
+
+AJUSTES DESTA VERSÃO
+- Sessão persistente por até 24 horas de inatividade.
+- O usuário permanece conectado ao fechar o navegador ou PWA, até clicar em Sair.
+- O botão de galeria não força mais a abertura da câmera.
+- A câmera direta continua disponível pelo botão Abrir câmera.
+- Botão do painel renomeado para Registrar Ponto.
+- Saudação dinâmica: Bom dia, Boa tarde ou Boa noite + primeiro nome do colaborador.
+- Data e hora exibidas no formato: quinta-feira, 16 de julho de 2026 | 14:51.
+- Service worker e cache atualizados para v143.

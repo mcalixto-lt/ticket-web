@@ -21,12 +21,21 @@ services:
       - path: /service-worker.js
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
-      - path: /ticket-service-worker-v140.js
+      - path: /ticket-service-worker-v143.js
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
       - path: /manifest.webmanifest
         name: Cache-Control
-        value: no-cache
+        value: no-cache, no-store, must-revalidate
+      - path: /favicon.ico
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /favicon.svg
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /apple-touch-icon.png
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
     routes:
       - type: rewrite
         source: /*

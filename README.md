@@ -83,4 +83,4 @@ npm run build
 - `src/core/storage.js`: perfis, IndexedDB, evidências e gravação atômica.
 - `src/core/cloud/google-drive.js`: autorização e envio ao Google Drive.
 - `src/core/cloud/onedrive.js`: autorização e envio ao Microsoft OneDrive.
-- `public/ticket-service-worker-v140.js`: PWA publicada.
+- `public/ticket-service-worker-v143.js`: PWA publicada.

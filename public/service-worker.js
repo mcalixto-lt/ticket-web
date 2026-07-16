@@ -8,7 +8,7 @@ self.addEventListener('activate', (event) => {
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of clients) {
       const url = new URL(client.url);
-      url.searchParams.set('ticket_atualizado', '140');
+      url.searchParams.set('ticket_atualizado', '143');
       client.navigate(url.href);
     }
   })());

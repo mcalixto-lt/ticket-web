@@ -5,7 +5,10 @@ const LOCAL_ACCOUNTS_KEY = 'ticket.local-accounts.v3';
 const LEGACY_PROFILE_KEY = 'ticket.profile.v1';
 const LEGACY_SCHEDULE_KEY = 'ticket.schedule.v1';
 const LEGACY_CLOUD_KEY = 'ticket.cloud.v1';
-const SESSION_KEY = 'ticket.unlocked.v2';
+const LEGACY_SESSION_KEY = 'ticket.unlocked.v2';
+const SESSION_KEY = 'ticket.session.v3';
+const SESSION_MIGRATION_KEY = 'ticket.session.migrated.v3';
+const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 const THEME_KEY = 'ticket.theme.v1';
 
 let storageNamespace = 'default';
@@ -212,13 +215,76 @@ export function saveTheme(theme) {
   localStorage.setItem(THEME_KEY, theme === 'dark' ? 'dark' : 'light');
 }
 
-export function setSessionUnlocked(value) {
-  if (value) sessionStorage.setItem(SESSION_KEY, '1');
-  else sessionStorage.removeItem(SESSION_KEY);
+function readPersistentSession() {
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed?.expiresAt ? parsed : null;
+  } catch {
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
 }
 
-export function isSessionUnlocked() {
-  return sessionStorage.getItem(SESSION_KEY) === '1';
+export function setSessionUnlocked(value) {
+  if (value) {
+    const now = Date.now();
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      unlocked: true,
+      lastActivityAt: now,
+      expiresAt: now + SESSION_DURATION_MS,
+    }));
+    localStorage.setItem(SESSION_MIGRATION_KEY, '1');
+  } else {
+    localStorage.removeItem(SESSION_KEY);
+  }
+  // Limpa o marcador temporário usado pelas versões anteriores.
+  sessionStorage.removeItem(LEGACY_SESSION_KEY);
+}
+
+export function touchSession() {
+  const session = readPersistentSession();
+  if (!session || session.expiresAt <= Date.now()) {
+    localStorage.removeItem(SESSION_KEY);
+    return false;
+  }
+  const now = Date.now();
+  localStorage.setItem(SESSION_KEY, JSON.stringify({
+    ...session,
+    unlocked: true,
+    lastActivityAt: now,
+    expiresAt: now + SESSION_DURATION_MS,
+  }));
+  return true;
+}
+
+export function isSessionUnlocked({ allowLegacyProfile = false } = {}) {
+  // Migra uma sessão ainda aberta na versão anterior.
+  if (sessionStorage.getItem(LEGACY_SESSION_KEY) === '1') {
+    setSessionUnlocked(true);
+    return true;
+  }
+
+  const session = readPersistentSession();
+  if (session) {
+    if (session.expiresAt <= Date.now()) {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.setItem(SESSION_MIGRATION_KEY, '1');
+      return false;
+    }
+    touchSession();
+    return true;
+  }
+
+  // Na primeira abertura desta atualização, preserva o usuário que estava
+  // conectado e não clicou em Sair. A migração ocorre somente uma vez.
+  if (allowLegacyProfile && localStorage.getItem(SESSION_MIGRATION_KEY) !== '1') {
+    setSessionUnlocked(true);
+    return true;
+  }
+
+  return false;
 }
 
 export async function hashText(value) {
@@ -400,7 +466,9 @@ export async function exportBackup() {
 export async function clearAllData({ removeAccount = true } = {}) {
   localStorage.removeItem(namespacedKey('ticket.schedule.v2'));
   localStorage.removeItem(namespacedKey('ticket.cloud.v2'));
-  sessionStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(LEGACY_SESSION_KEY);
+  localStorage.setItem(SESSION_MIGRATION_KEY, '1');
   clearActiveProfile();
   if (removeAccount) {
     localStorage.removeItem(LOCAL_ACCOUNT_KEY);

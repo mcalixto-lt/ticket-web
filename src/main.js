@@ -38,6 +38,7 @@ import {
   hasLocalAccounts,
   isEvidenceLinked,
   isSessionUnlocked,
+  touchSession,
   listEvidence,
   listEvidenceForDate,
   listRecords,
@@ -99,6 +100,61 @@ const state = {
 
 document.documentElement.dataset.theme = state.theme;
 
+let dashboardClockTimer = null;
+let sessionActivityTrackingBound = false;
+let lastSessionTouchAt = 0;
+
+function displayFirstName(fullName = '') {
+  const raw = firstName(fullName).trim();
+  if (!raw) return 'Colaborador';
+  const lower = raw.toLocaleLowerCase('pt-BR');
+  return lower.charAt(0).toLocaleUpperCase('pt-BR') + lower.slice(1);
+}
+
+function greetingForTime(date = new Date()) {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 12) return 'Bom dia';
+  if (hour >= 12 && hour < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+function formatCurrentTime(date = new Date()) {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function updateDashboardDateTime() {
+  const now = new Date();
+  const greeting = document.querySelector('#dashboardGreeting');
+  const dateTime = document.querySelector('#dashboardDateTime');
+  if (greeting) greeting.textContent = `${greetingForTime(now)}, ${displayFirstName(state.profile?.fullName)}`;
+  if (dateTime) dateTime.textContent = `${formatLongDate(todayIso())} | ${formatCurrentTime(now)}`;
+}
+
+function startDashboardClock() {
+  if (dashboardClockTimer) clearInterval(dashboardClockTimer);
+  updateDashboardDateTime();
+  dashboardClockTimer = window.setInterval(updateDashboardDateTime, 15000);
+}
+
+function bindPersistentSessionActivity() {
+  if (sessionActivityTrackingBound) return;
+  sessionActivityTrackingBound = true;
+  const refreshSession = () => {
+    if (!state.profile) return;
+    const now = Date.now();
+    if (now - lastSessionTouchAt < 60_000) return;
+    lastSessionTouchAt = now;
+    if (!touchSession()) void logout();
+  };
+  ['pointerdown', 'keydown', 'touchstart'].forEach((eventName) => {
+    window.addEventListener(eventName, refreshSession, { passive: true });
+  });
+  window.addEventListener('focus', refreshSession);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshSession();
+  });
+}
+
 const viewTitles = {
   dashboard: ['Painel', 'Resumo da sua jornada'],
   scan: ['Registrar ponto', 'Escaneie o comprovante pela câmera'],
@@ -121,7 +177,19 @@ function escapeHtml(value = '') {
 
 function logoMarkup({ compact = false } = {}) {
   return `<div class="brand ${compact ? 'brand-compact' : ''}">
-    <img src="./icons/favicon.svg" alt="" class="brand-icon" />
+    <svg class="brand-icon" viewBox="0 0 128 128" role="img" aria-label="Ticket.">
+      <defs>
+        <linearGradient id="ticketGold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#f7cf62"></stop>
+          <stop offset="1" stop-color="#c89522"></stop>
+        </linearGradient>
+      </defs>
+      <rect width="128" height="128" rx="28" fill="#061b3a"></rect>
+      <path d="M27 27h62v16H68v52H49V43H27z" fill="url(#ticketGold)"></path>
+      <circle cx="87" cy="84" r="23" fill="#061b3a" stroke="url(#ticketGold)" stroke-width="6"></circle>
+      <path d="M87 69v16l11 7" fill="none" stroke="url(#ticketGold)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+      <circle cx="107" cy="106" r="7" fill="url(#ticketGold)"></circle>
+    </svg>
     <div class="brand-word">Ticket<span>.</span></div>
   </div>`;
 }
@@ -289,8 +357,8 @@ function renderShell() {
         ${sidebarItem('help', 'Ajuda', 'help')}
       </nav>
       <div class="sidebar-profile">
-        <div class="avatar">${escapeHtml(firstName(state.profile.fullName).charAt(0))}</div>
-        <div><strong>${escapeHtml(firstName(state.profile.fullName))}</strong><small>${escapeHtml(state.profile.cpfMasked)}</small></div>
+        <div class="avatar">${escapeHtml(displayFirstName(state.profile.fullName).charAt(0))}</div>
+        <div><strong>${escapeHtml(displayFirstName(state.profile.fullName))}</strong><small>${escapeHtml(state.profile.cpfMasked)}</small></div>
         <button id="logoutButton" class="icon-button" title="Sair">${icon('logout', 19)}</button>
       </div>
     </aside>
@@ -356,6 +424,8 @@ function renderShell() {
   </div>`;
 
   bindShellEvents();
+  bindPersistentSessionActivity();
+  startDashboardClock();
   renderProfileSummary();
   renderScheduleEditor();
   renderStorageSettings();
@@ -365,7 +435,7 @@ function renderShell() {
 function dashboardViewTemplate() {
   return `<section class="view" data-view="dashboard">
     <div class="dashboard-greeting">
-      <div><span class="eyebrow">Visão geral</span><h2>Olá, ${escapeHtml(firstName(state.profile.fullName))}</h2><p>${escapeHtml(formatLongDate(todayIso()))}</p></div>
+      <div><span class="eyebrow">Visão geral</span><h2 id="dashboardGreeting">${greetingForTime()}, ${escapeHtml(displayFirstName(state.profile.fullName))}</h2><p id="dashboardDateTime">${escapeHtml(formatLongDate(todayIso()))} | ${formatCurrentTime()}</p></div>
       <span id="todayStatusPill" class="status-pill status-neutral">Aguardando registros</span>
     </div>
     <div class="stats-grid stats-grid-five">
@@ -380,7 +450,7 @@ function dashboardViewTemplate() {
       <div class="desktop-table"><table><thead><tr><th>Data</th><th>Entrada</th><th>Almoço saída</th><th>Almoço volta</th><th>Saída final</th><th>Total</th><th>Saldo</th></tr></thead><tbody id="recentRecordsBody"></tbody></table></div>
       <div id="recentMobileList" class="mobile-record-list"></div>
       <div class="dashboard-actions">
-        <button id="registerReceiptButton" class="button button-navy">${icon('camera', 19)} Registrar novo ponto (foto)</button>
+        <button id="registerReceiptButton" class="button button-navy">${icon('camera', 19)} Registrar Ponto</button>
         <button id="registerEnvironmentButton" class="button button-outline">${icon('image', 19)} Registrar ambiente</button>
       </div>
     </article>
@@ -408,8 +478,8 @@ function scanViewTemplate() {
         </div>
         <div id="qualityBar" class="quality-bar"><span class="quality-dot"></span><strong>Sem imagem</strong><small>Selecione ou fotografe uma imagem</small></div>
         <div class="scanner-controls">
-          <input id="imageFileInput" type="file" accept="image/*" capture="environment" hidden />
-          <button id="chooseImageButton" class="round-action" title="Escolher imagem">${icon('image', 22)}</button>
+          <input id="imageFileInput" type="file" accept="image/*" hidden />
+          <button id="chooseImageButton" class="round-action" title="Abrir galeria" aria-label="Abrir galeria de fotos">${icon('image', 22)}</button>
           <button id="captureButton" class="capture-button" aria-label="Capturar foto"><span></span></button>
           <button id="rotateImageButton" class="round-action" title="Girar imagem">${icon('rotate', 22)}</button>
         </div>
@@ -582,6 +652,10 @@ function closeMoreSheet() {
 
 async function logout() {
   stopCamera();
+  if (dashboardClockTimer) {
+    clearInterval(dashboardClockTimer);
+    dashboardClockTimer = null;
+  }
   await signOutAccount();
   state.profile = null;
   state.view = 'dashboard';
@@ -1646,18 +1720,18 @@ async function registerTicketServiceWorker() {
 
     await Promise.all(
       registrations
-        .filter((registration) => !registration.active?.scriptURL.includes('ticket-service-worker-v140.js'))
+        .filter((registration) => !registration.active?.scriptURL.includes('ticket-service-worker-v143.js'))
         .map((registration) => registration.unregister()),
     );
 
     if ('caches' in window) {
       const cacheKeys = await caches.keys();
       await Promise.all(cacheKeys
-        .filter((key) => key === 'pontoscan-v1' || (key.startsWith('ticket-shell-') && key !== 'ticket-shell-v140'))
+        .filter((key) => key === 'pontoscan-v1' || (key.startsWith('ticket-shell-') && key !== 'ticket-shell-v143'))
         .map((key) => caches.delete(key)));
     }
 
-    await navigator.serviceWorker.register('./ticket-service-worker-v140.js', {
+    await navigator.serviceWorker.register('./ticket-service-worker-v143.js', {
       scope: './',
       updateViaCache: 'none',
     });
@@ -1669,7 +1743,7 @@ async function registerTicketServiceWorker() {
 window.addEventListener('load', registerTicketServiceWorker);
 
 (async function start() {
-  if (state.profile && isSessionUnlocked()) {
+  if (state.profile && isSessionUnlocked({ allowLegacyProfile: true })) {
     await bootApp();
     return;
   }
