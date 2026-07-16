@@ -1,0 +1,22 @@
+TICKET. WEB 1.4
+
+COMO INICIAR
+1. Extraia todo o arquivo ZIP para uma pasta nova.
+2. Feche janelas de versões anteriores.
+3. Execute iniciar-ticket.bat.
+4. O sistema abrirá em uma aba normal do navegador:
+   http://127.0.0.1:8773/
+
+ACESSO NO CELULAR NA MESMA REDE
+O inicializador mostrará o IP do computador. Digite esse endereço no navegador
+do celular conectado à mesma rede Wi-Fi.
+
+REGISTRO
+- Fotografe o comprovante completo.
+- Escolha cores ou alto contraste.
+- Informe manualmente DATA e HORA.
+- Use Registrar ambiente quando precisar comprovar presença sem o relógio.
+
+NUVEM
+Google Drive e OneDrive precisam dos Client IDs públicos da aplicação.
+Consulte CONFIGURAR-DRIVE-ONEDRIVE.md e execute configurar-servicos.bat.

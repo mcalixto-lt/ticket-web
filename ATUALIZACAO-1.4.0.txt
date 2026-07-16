@@ -1,0 +1,39 @@
+TICKET. WEB 1.4.0 — AJUSTES DESTA ENTREGA
+
+1. CAPTURAR COMPROVANTE
+- Retirada a área “Leitura original (imutável)”.
+- A fotografia é preservada integralmente.
+- A DATA e a HORA usadas no cálculo são informadas manualmente.
+- É possível registrar uma ou mais horas da mesma fotografia, uma por linha.
+
+2. IMAGEM
+- Opção “Em cores”.
+- Opção “Alto contraste”.
+- A escolha define a versão que será preservada e sincronizada.
+
+3. PAINEL
+Indicadores na ordem:
+- Batidas de Hoje
+- Meta do Dia
+- Horas Trabalhadas
+- Saldo do Dia
+- Saldo do Mês
+
+4. REGISTRAR AMBIENTE
+- Substitui o antigo botão de registro manual.
+- Registra uma fotografia do ambiente com data e hora do dispositivo.
+- É uma evidência auxiliar de presença.
+- Não cria uma batida e não altera o cálculo da jornada.
+- Aparece no Histórico Diário e pode ser sincronizado com a nuvem.
+
+5. GOOGLE DRIVE E ONEDRIVE
+- Mantida a fila de sincronização.
+- Adicionado assistente configurar-servicos.bat.
+- Adicionado guia CONFIGURAR-DRIVE-ONEDRIVE.md.
+- As integrações exigem Client IDs criados pelo proprietário do sistema.
+
+6. EXECUÇÃO
+- Porta local: 8773.
+- Acesso no computador: http://127.0.0.1:8773
+- Acesso no celular na mesma rede: usar o endereço IP exibido por iniciar-ticket.bat.
+- Para acesso externo e OAuth no celular, publicar em HTTPS.

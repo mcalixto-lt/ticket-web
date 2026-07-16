@@ -1,0 +1,19 @@
+{
+  "name": "ticket-web",
+  "version": "1.4.1",
+  "private": true,
+  "type": "module",
+  "description": "Ticket. — painel web mobile-first para registrar comprovantes e presença por fotografia, com cálculo de jornada.",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "5.17.0"
+  },
+  "devDependencies": {
+    "vite": "8.1.4"
+  }
+}
