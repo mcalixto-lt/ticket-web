@@ -7,7 +7,7 @@ services:
     autoDeployTrigger: commit
     envVars:
       - key: VITE_GOOGLE_CLIENT_ID
-        value: 132252524451-envbb322c480ln0ushp0ssga1ups88q8.apps.googleusercontent.com
+        value: 132252524451-oo3718b3dpvr1jr6n7ggafc18k9i99h3.apps.googleusercontent.com
     headers:
       - path: /*
         name: X-Content-Type-Options
