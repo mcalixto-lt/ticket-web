@@ -5,40 +5,40 @@ services:
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
     autoDeployTrigger: commit
-        envVars:
+
+    envVars:
       - key: VITE_GOOGLE_CLIENT_ID
         value: 132252524451-ag3p6akrp4o3ac36berocktd4eteucea.apps.googleusercontent.com
+
     headers:
       - path: /*
         name: X-Content-Type-Options
         value: nosniff
+
       - path: /*
         name: Referrer-Policy
         value: strict-origin-when-cross-origin
+
       - path: /*
         name: Permissions-Policy
         value: camera=(self), microphone=()
+
       - path: /*
         name: X-Frame-Options
         value: SAMEORIGIN
+
       - path: /service-worker.js
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
+
       - path: /ticket-service-worker-v150.js
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
+
       - path: /manifest-v150.webmanifest
         name: Cache-Control
         value: no-cache, no-store, must-revalidate
-      - path: /favicon-v150.ico
-        name: Cache-Control
-        value: no-cache, no-store, must-revalidate
-      - path: /favicon-v150.svg
-        name: Cache-Control
-        value: no-cache, no-store, must-revalidate
-      - path: /apple-touch-icon-v150.png
-        name: Cache-Control
-        value: no-cache, no-store, must-revalidate
+
     routes:
       - type: rewrite
         source: /*
