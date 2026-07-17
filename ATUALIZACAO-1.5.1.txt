@@ -1,0 +1,9 @@
+TICKET. WEB 1.5.1
+
+Correções:
+- Símbolo interno do Ticket. redesenhado em SVG com cores sólidas para compatibilidade com Chrome móvel.
+- Saudação dinâmica (Bom dia, Boa tarde ou Boa noite) adicionada acima das abas Entrar e Criar cadastro.
+- A saudação é atualizada automaticamente enquanto a tela permanece aberta.
+
+IMPORTANTE:
+Este pacote não substitui o render.yaml já configurado no GitHub. Mantenha o render.yaml atual, pois ele contém o VITE_GOOGLE_CLIENT_ID que já está funcionando.

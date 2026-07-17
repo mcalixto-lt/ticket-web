@@ -97,3 +97,19 @@ test('painel usa Registrar Ponto e saudação dinâmica com data e hora', () => 
   assert.match(mainSource, /id="dashboardDateTime"/);
   assert.match(mainSource, /\| \$\{formatCurrentTime\(\)\}/);
 });
+
+
+test('ícone interno usa cores sólidas compatíveis com Chrome móvel', () => {
+  assert.match(mainSource, /xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+  assert.match(mainSource, /fill="#f3c650"/);
+  assert.doesNotMatch(mainSource, /url\(#ticketGold\)/);
+});
+
+test('tela de acesso mostra saudação dinâmica acima das abas', () => {
+  const greetingIndex = mainSource.indexOf('class="auth-greeting"');
+  const tabsIndex = mainSource.indexOf('${authTabs()}');
+  assert.ok(greetingIndex >= 0, 'saudação de acesso deve existir');
+  assert.ok(tabsIndex > greetingIndex, 'saudação deve aparecer acima das abas');
+  assert.match(mainSource, /id="authGreeting"/);
+  assert.match(mainSource, /startAuthGreetingClock\(\)/);
+});

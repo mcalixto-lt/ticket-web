@@ -114,6 +114,7 @@ function effectiveMicrosoftTenantId() {
 }
 
 let dashboardClockTimer = null;
+let authGreetingTimer = null;
 let sessionActivityTrackingBound = false;
 let lastSessionTouchAt = 0;
 
@@ -147,6 +148,17 @@ function startDashboardClock() {
   if (dashboardClockTimer) clearInterval(dashboardClockTimer);
   updateDashboardDateTime();
   dashboardClockTimer = window.setInterval(updateDashboardDateTime, 15000);
+}
+
+function updateAuthGreeting() {
+  const greeting = document.querySelector('#authGreeting');
+  if (greeting) greeting.textContent = greetingForTime(new Date());
+}
+
+function startAuthGreetingClock() {
+  if (authGreetingTimer) clearInterval(authGreetingTimer);
+  updateAuthGreeting();
+  authGreetingTimer = window.setInterval(updateAuthGreeting, 30_000);
 }
 
 function bindPersistentSessionActivity() {
@@ -190,18 +202,12 @@ function escapeHtml(value = '') {
 
 function logoMarkup({ compact = false } = {}) {
   return `<div class="brand ${compact ? 'brand-compact' : ''}">
-    <svg class="brand-icon" viewBox="0 0 128 128" role="img" aria-label="Ticket.">
-      <defs>
-        <linearGradient id="ticketGold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#f7cf62"></stop>
-          <stop offset="1" stop-color="#c89522"></stop>
-        </linearGradient>
-      </defs>
-      <rect width="128" height="128" rx="28" fill="#061b3a"></rect>
-      <path d="M27 27h62v16H68v52H49V43H27z" fill="url(#ticketGold)"></path>
-      <circle cx="87" cy="84" r="23" fill="#061b3a" stroke="url(#ticketGold)" stroke-width="6"></circle>
-      <path d="M87 69v16l11 7" fill="none" stroke="url(#ticketGold)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
-      <circle cx="107" cy="106" r="7" fill="url(#ticketGold)"></circle>
+    <svg class="brand-icon" viewBox="0 0 128 128" role="img" aria-label="Símbolo do Ticket." xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="126" height="126" rx="28" fill="#061b3a" stroke="#102f5d" stroke-width="2"></rect>
+      <path d="M27 27h62v16H68v52H49V43H27z" fill="#f3c650"></path>
+      <circle cx="87" cy="84" r="23" fill="#061b3a" stroke="#f3c650" stroke-width="6"></circle>
+      <path d="M87 69v16l11 7" fill="none" stroke="#f3c650" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+      <circle cx="107" cy="106" r="7" fill="#f3c650"></circle>
     </svg>
     <div class="brand-word">Ticket<span>.</span></div>
   </div>`;
@@ -271,6 +277,7 @@ function renderLogin() {
     <section class="login-panel-wrap">
       <div class="login-card">
         ${logoMarkup({ compact: true })}
+        <div class="auth-greeting" aria-live="polite"><span id="authGreeting">${greetingForTime()}</span></div>
         ${authTabs()}
         <div class="login-heading">
           <span class="eyebrow">${mode === 'register' ? 'Novo colaborador' : 'Acesso rápido'}</span>
@@ -313,6 +320,7 @@ function renderLogin() {
     state.authMode = button.dataset.authMode;
     renderLogin();
   }));
+  startAuthGreetingClock();
   const form = document.querySelector('#loginForm');
   const cpfInput = document.querySelector('#loginCpf');
   cpfInput.addEventListener('input', () => { cpfInput.value = formatCpf(cpfInput.value); });
@@ -356,6 +364,10 @@ async function handleLoginSubmit(event) {
 }
 
 function renderShell() {
+  if (authGreetingTimer) {
+    clearInterval(authGreetingTimer);
+    authGreetingTimer = null;
+  }
   app.innerHTML = `<div class="app-shell">
     <aside class="sidebar">
       <div class="sidebar-brand">${logoMarkup({ compact: true })}</div>

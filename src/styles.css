@@ -43,7 +43,7 @@ img, video { display: block; max-width: 100%; }
 .negative-text { color: var(--danger) !important; }
 
 .brand { display: inline-flex; align-items: center; gap: 18px; }
-.brand-icon { width: 82px; height: 82px; filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .12)); }
+.brand-icon { width: 82px; height: 82px; display: block; flex: 0 0 auto; overflow: visible; filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .12)); }
 .brand-word { color: var(--navy-900); font-size: clamp(2.5rem, 5vw, 5rem); font-weight: 750; letter-spacing: -.055em; line-height: 1; }
 .brand-word span { color: var(--gold-500); }
 .brand-compact { gap: 10px; }
@@ -65,6 +65,10 @@ img, video { display: block; max-width: 100%; }
 .login-panel-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; background: linear-gradient(160deg, var(--navy-950), var(--navy-900)); }
 .login-card { width: min(440px, 100%); color: #fff; }
 .login-card > .brand { display: none; color: #fff; }
+.auth-greeting { display: flex; align-items: center; justify-content: center; min-height: 30px; margin: 0 0 14px; color: var(--gold-400); font-size: .92rem; font-weight: 800; letter-spacing: .04em; }
+.auth-greeting span { display: inline-flex; align-items: center; gap: 8px; }
+.auth-greeting span::before { content: ""; width: 22px; height: 1px; background: rgba(243, 205, 105, .55); }
+.auth-greeting span::after { content: ""; width: 22px; height: 1px; background: rgba(243, 205, 105, .55); }
 .login-heading { margin-bottom: 28px; }
 .eyebrow { display: block; margin-bottom: 8px; color: var(--gold-500); font-size: .73rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
 .login-heading h2 { margin: 0 0 10px; font-size: clamp(1.75rem, 4vw, 2.2rem); letter-spacing: -.035em; }
@@ -555,7 +559,8 @@ html[data-theme="dark"] .provider-icon.onedrive { background: #14243a; }
 @media (max-width: 900px) {
   .login-panel-wrap { overflow-y: auto; justify-content: flex-start; }
   .login-card { margin: auto 0; padding: 18px 0; }
-  .login-card > .brand { margin-bottom: 24px; }
+  .login-card > .brand { margin-bottom: 20px; }
+  .auth-greeting { margin-bottom: 12px; }
   .auth-tabs { margin-bottom: 20px; }
 }
 
