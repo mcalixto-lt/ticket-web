@@ -5,6 +5,9 @@ services:
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
     autoDeployTrigger: commit
+        envVars:
+      - key: VITE_GOOGLE_CLIENT_ID
+        value: 132252524451-ag3p6akrp4o3ac36berocktd4eteucea.apps.googleusercontent.com
     headers:
       - path: /*
         name: X-Content-Type-Options
