@@ -74,9 +74,9 @@ const state = {
   schedule: loadSchedule(DEFAULT_SCHEDULE),
   cloud: {
     ...loadCloudSettings(),
-    googleClientId: loadCloudSettings().googleClientId || runtimeConfig.googleClientId,
-    microsoftClientId: loadCloudSettings().microsoftClientId || runtimeConfig.microsoftClientId,
-    microsoftTenantId: loadCloudSettings().microsoftTenantId || runtimeConfig.microsoftTenantId,
+    googleClientId: runtimeConfig.googleClientId || loadCloudSettings().googleClientId,
+    microsoftClientId: runtimeConfig.microsoftClientId || loadCloudSettings().microsoftClientId,
+    microsoftTenantId: runtimeConfig.microsoftTenantId || loadCloudSettings().microsoftTenantId,
   },
   records: [],
   view: 'dashboard',
@@ -99,6 +99,19 @@ const state = {
 };
 
 document.documentElement.dataset.theme = state.theme;
+
+
+function effectiveGoogleClientId() {
+  return String(runtimeConfig.googleClientId || state.cloud.googleClientId || '').trim();
+}
+
+function effectiveMicrosoftClientId() {
+  return String(runtimeConfig.microsoftClientId || state.cloud.microsoftClientId || '').trim();
+}
+
+function effectiveMicrosoftTenantId() {
+  return String(runtimeConfig.microsoftTenantId || state.cloud.microsoftTenantId || 'common').trim() || 'common';
+}
 
 let dashboardClockTimer = null;
 let sessionActivityTrackingBound = false;
@@ -551,8 +564,8 @@ function settingsViewTemplate() {
 }
 
 function storageViewTemplate() {
-  const googleConfigured = Boolean(state.cloud.googleClientId || runtimeConfig.googleClientId);
-  const microsoftConfigured = Boolean(state.cloud.microsoftClientId || runtimeConfig.microsoftClientId);
+  const googleConfigured = Boolean(effectiveGoogleClientId());
+  const microsoftConfigured = Boolean(effectiveMicrosoftClientId());
   return `<section class="view" data-view="storage">
     <div class="section-intro"><div><span class="eyebrow">Cópias das imagens</span><h2>Armazenamento</h2><p>Escolha onde os comprovantes serão preservados após a confirmação.</p></div></div>
     <div class="storage-options">
@@ -573,19 +586,18 @@ function storageViewTemplate() {
         <label class="check-row compact"><input id="keepLocalCopy" type="checkbox" /><span>Manter também uma cópia neste dispositivo.</span></label>
         <div id="cloudStatus" class="cloud-status"></div>
         <details id="adminIntegrationDetails" class="admin-integration">
-          <summary>${icon('settings', 18)} Configuração técnica do administrador</summary>
+          <summary>${icon('settings', 18)} Diagnóstico da integração</summary>
           <div class="admin-integration-body">
-            <p>Estes IDs identificam o aplicativo OAuth e não pertencem ao colaborador. Preencha apenas na instalação administrativa ou use o arquivo <strong>configurar-servicos.bat</strong>.</p>
-            <div class="origin-helper"><span>Origem que deve ser autorizada nos provedores</span><code id="currentOriginValue"></code><button id="copyOriginButton" class="button button-outline" type="button">Copiar origem</button></div>
-            <label class="input-group light"><span>Google OAuth Client ID</span><input id="googleClientId" type="text" placeholder="000000000.apps.googleusercontent.com" /></label>
-            <label class="input-group light"><span>Microsoft Application (client) ID</span><input id="microsoftClientId" type="text" placeholder="00000000-0000-0000-0000-000000000000" /></label>
-            <label class="input-group light"><span>Microsoft Tenant</span><input id="microsoftTenantId" type="text" placeholder="common" /></label>
-            <button id="saveIntegrationConfigButton" class="button button-navy" type="button">Salvar configuração técnica</button>
+            <p>Na publicação, o Client ID deve ser definido no Render. Um valor antigo salvo no celular não substitui mais a configuração oficial.</p>
+            <div class="origin-helper"><span>Origem autorizada no Google Cloud</span><code id="currentOriginValue"></code><button id="copyOriginButton" class="button button-outline" type="button">Copiar origem</button></div>
+            ${runtimeConfig.googleClientId ? '<div class="integration-state ready">'+icon('check', 19)+'<span>Google Client ID carregado pelo Render.</span></div>' : '<label class="input-group light"><span>Google OAuth Client ID (somente teste local)</span><input id="googleClientId" type="text" placeholder="000000000.apps.googleusercontent.com" /></label>'}
+            ${runtimeConfig.microsoftClientId ? '<div class="integration-state ready">'+icon('check', 19)+'<span>Microsoft Client ID carregado pelo Render.</span></div>' : '<label class="input-group light"><span>Microsoft Application Client ID (somente teste local)</span><input id="microsoftClientId" type="text" placeholder="00000000-0000-0000-0000-000000000000" /></label><label class="input-group light"><span>Microsoft Tenant</span><input id="microsoftTenantId" type="text" placeholder="common" /></label>'}
+            ${(!runtimeConfig.googleClientId || !runtimeConfig.microsoftClientId) ? '<button id="saveIntegrationConfigButton" class="button button-navy" type="button">Salvar configuração local</button>' : ''}
           </div>
         </details>
       </article>
       <article class="panel-card"><div class="panel-heading"><div><h3>Fila de sincronização</h3><p>Envios pendentes são preservados até a internet voltar.</p></div>${icon('cloud', 22)}</div><div id="syncQueueSummary" class="sync-summary"></div><button id="retrySyncButton" class="button button-navy">Tentar sincronizar agora</button></article>
-      <article class="panel-card"><div class="panel-heading"><div><h3>Como ativar a sincronização</h3><p>Crie uma credencial OAuth para aplicativo web no Google e uma aplicação SPA na Microsoft. Depois informe os Client IDs acima.</p></div>${icon('help', 22)}</div><p class="privacy-caption">O pacote inclui o guia <strong>CONFIGURAR-DRIVE-ONEDRIVE.md</strong> com o passo a passo e as URLs que precisam ser autorizadas.</p></article>
+      <article class="panel-card"><div class="panel-heading"><div><h3>Como ativar a sincronização</h3><p>Crie uma credencial OAuth para aplicativo web no Google e uma aplicação SPA na Microsoft. Depois configure os Client IDs no Render e faça um novo deploy.</p></div>${icon('help', 22)}</div><p class="privacy-caption">O pacote inclui o guia <strong>CONFIGURAR-DRIVE-ONEDRIVE.md</strong> com o passo a passo e as URLs que precisam ser autorizadas.</p></article>
     </div>
   </section>`;
 }
@@ -666,6 +678,19 @@ async function logout() {
 function applyTheme(theme) {
   state.theme = theme === 'dark' ? 'dark' : 'light';
   document.documentElement.dataset.theme = state.theme;
+
+
+function effectiveGoogleClientId() {
+  return String(runtimeConfig.googleClientId || state.cloud.googleClientId || '').trim();
+}
+
+function effectiveMicrosoftClientId() {
+  return String(runtimeConfig.microsoftClientId || state.cloud.microsoftClientId || '').trim();
+}
+
+function effectiveMicrosoftTenantId() {
+  return String(runtimeConfig.microsoftTenantId || state.cloud.microsoftTenantId || 'common').trim() || 'common';
+}
   saveTheme(state.theme);
 }
 
@@ -1110,12 +1135,12 @@ function updateInstallButton() {
 function bindStorageEvents() {
   document.querySelectorAll('[data-provider]').forEach((button) => button.addEventListener('click', () => {
     const provider = button.dataset.provider;
-    if (provider === 'google' && !state.cloud.googleClientId) {
+    if (provider === 'google' && !effectiveGoogleClientId()) {
       document.querySelector('#adminIntegrationDetails')?.setAttribute('open', '');
       toast('Configure primeiro o Google OAuth Client ID. O guia está no pacote do projeto.', 'info', 6500);
       return;
     }
-    if (provider === 'onedrive' && !state.cloud.microsoftClientId) {
+    if (provider === 'onedrive' && !effectiveMicrosoftClientId()) {
       document.querySelector('#adminIntegrationDetails')?.setAttribute('open', '');
       toast('Configure primeiro o Microsoft Application Client ID. O guia está no pacote do projeto.', 'info', 6500);
       return;
@@ -1145,14 +1170,14 @@ function bindStorageEvents() {
   });
   document.querySelector('#connectGoogleButton')?.addEventListener('click', async () => {
     saveCloudFormFields();
-    if (!state.cloud.googleClientId) {
+    if (!effectiveGoogleClientId()) {
       document.querySelector('#adminIntegrationDetails')?.setAttribute('open', '');
       toast('A integração do Google Drive precisa ser configurada uma única vez pelo administrador.', 'info', 6500);
       return;
     }
     try {
       setBusy(true, 'Conectando ao Google Drive…');
-      await connectGoogleDrive(state.cloud.googleClientId);
+      await connectGoogleDrive(effectiveGoogleClientId());
       state.cloud.googleConnected = true;
       saveCloudSettings(state.cloud);
       renderStorageSettings();
@@ -1165,14 +1190,14 @@ function bindStorageEvents() {
   });
   document.querySelector('#connectOneDriveButton')?.addEventListener('click', async () => {
     saveCloudFormFields();
-    if (!state.cloud.microsoftClientId) {
+    if (!effectiveMicrosoftClientId()) {
       document.querySelector('#adminIntegrationDetails')?.setAttribute('open', '');
       toast('A integração do OneDrive precisa ser configurada uma única vez pelo administrador.', 'info', 6500);
       return;
     }
     try {
       setBusy(true, 'Conectando ao OneDrive…');
-      await connectOneDrive(state.cloud.microsoftClientId, state.cloud.microsoftTenantId);
+      await connectOneDrive(effectiveMicrosoftClientId(), effectiveMicrosoftTenantId());
       state.cloud.microsoftConnected = true;
       saveCloudSettings(state.cloud);
       renderStorageSettings();
@@ -1192,9 +1217,9 @@ function saveCloudFormFields() {
   const tenant = document.querySelector('#microsoftTenantId');
   const local = document.querySelector('#keepLocalCopy');
   const cloudOcr = document.querySelector('#cloudOcrEnabled');
-  if (google) state.cloud.googleClientId = google.value.trim();
-  if (microsoft) state.cloud.microsoftClientId = microsoft.value.trim();
-  if (tenant) state.cloud.microsoftTenantId = tenant.value.trim() || 'common';
+  if (google && !runtimeConfig.googleClientId) state.cloud.googleClientId = google.value.trim();
+  if (microsoft && !runtimeConfig.microsoftClientId) state.cloud.microsoftClientId = microsoft.value.trim();
+  if (tenant && !runtimeConfig.microsoftTenantId) state.cloud.microsoftTenantId = tenant.value.trim() || 'common';
   if (local) state.cloud.keepLocalCopy = local.checked;
   if (cloudOcr) state.cloud.cloudOcrEnabled = cloudOcr.checked;
   saveCloudSettings(state.cloud);
@@ -1207,9 +1232,12 @@ function renderStorageSettings() {
   if (!googleConfig || !microsoftConfig) return;
   googleConfig.classList.toggle('active', state.cloud.provider === 'google');
   microsoftConfig.classList.toggle('active', state.cloud.provider === 'onedrive');
-  document.querySelector('#googleClientId').value = state.cloud.googleClientId || '';
-  document.querySelector('#microsoftClientId').value = state.cloud.microsoftClientId || '';
-  document.querySelector('#microsoftTenantId').value = state.cloud.microsoftTenantId || 'common';
+  const googleInput = document.querySelector('#googleClientId');
+  if (googleInput) googleInput.value = effectiveGoogleClientId();
+  const microsoftInput = document.querySelector('#microsoftClientId');
+  if (microsoftInput) microsoftInput.value = effectiveMicrosoftClientId();
+  const tenantInput = document.querySelector('#microsoftTenantId');
+  if (tenantInput) tenantInput.value = effectiveMicrosoftTenantId();
   document.querySelector('#keepLocalCopy').checked = state.cloud.keepLocalCopy !== false;
   const cloudOcrToggle = document.querySelector('#cloudOcrEnabled');
   if (cloudOcrToggle) cloudOcrToggle.checked = state.cloud.cloudOcrEnabled !== false;
@@ -1672,10 +1700,18 @@ async function bootApp() {
   state.cloud = {
     ...storedCloud,
     googleConnected: false,
-    googleClientId: storedCloud.googleClientId || runtimeConfig.googleClientId,
-    microsoftClientId: storedCloud.microsoftClientId || runtimeConfig.microsoftClientId,
-    microsoftTenantId: storedCloud.microsoftTenantId || runtimeConfig.microsoftTenantId,
+    googleClientId: runtimeConfig.googleClientId || storedCloud.googleClientId,
+    microsoftClientId: runtimeConfig.microsoftClientId || storedCloud.microsoftClientId,
+    microsoftTenantId: runtimeConfig.microsoftTenantId || storedCloud.microsoftTenantId,
   };
+  if (runtimeConfig.googleClientId || runtimeConfig.microsoftClientId) {
+    saveCloudSettings({
+      ...state.cloud,
+      googleClientId: runtimeConfig.googleClientId || state.cloud.googleClientId,
+      microsoftClientId: runtimeConfig.microsoftClientId || state.cloud.microsoftClientId,
+      microsoftTenantId: runtimeConfig.microsoftTenantId || state.cloud.microsoftTenantId,
+    });
+  }
   await migrateLegacyDataToCurrent();
   state.records = await listRecords();
   renderShell();
@@ -1720,18 +1756,18 @@ async function registerTicketServiceWorker() {
 
     await Promise.all(
       registrations
-        .filter((registration) => !registration.active?.scriptURL.includes('ticket-service-worker-v143.js'))
+        .filter((registration) => !registration.active?.scriptURL.includes('ticket-service-worker-v150.js'))
         .map((registration) => registration.unregister()),
     );
 
     if ('caches' in window) {
       const cacheKeys = await caches.keys();
       await Promise.all(cacheKeys
-        .filter((key) => key === 'pontoscan-v1' || (key.startsWith('ticket-shell-') && key !== 'ticket-shell-v143'))
+        .filter((key) => key === 'pontoscan-v1' || (key.startsWith('ticket-shell-') && key !== 'ticket-shell-v150'))
         .map((key) => caches.delete(key)));
     }
 
-    await navigator.serviceWorker.register('./ticket-service-worker-v143.js', {
+    await navigator.serviceWorker.register('./ticket-service-worker-v150.js', {
       scope: './',
       updateViaCache: 'none',
     });

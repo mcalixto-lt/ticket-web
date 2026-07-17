@@ -67,8 +67,9 @@ test('marca principal usa SVG incorporado e favicons públicos absolutos', async
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(main, /<svg class="brand-icon"/);
   assert.doesNotMatch(main, /<img src="\.\/icons\/favicon\.svg"/);
-  assert.match(html, /href="\/favicon\.ico\?v=143"/);
-  assert.match(html, /href="\/apple-touch-icon\.png\?v=143"/);
+  assert.match(html, /href="\/favicon-v150\.ico"/);
+  assert.match(html, /href="\/apple-touch-icon-v150\.png"/);
+  assert.match(html, /href="\/manifest-v150\.webmanifest"/);
 });
 
 

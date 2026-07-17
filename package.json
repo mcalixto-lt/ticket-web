@@ -1,9 +1,9 @@
 {
   "name": "ticket-web",
-  "version": "1.4.3",
+  "version": "1.5.0",
   "private": true,
   "type": "module",
-  "description": "Ticket. — painel web mobile-first para registrar comprovantes e presença por fotografia, com cálculo de jornada.",
+  "description": "Ticket. — painel web mobile-first com implantação limpa, PWA e Google Drive.",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",

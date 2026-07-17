@@ -1,3 +1,5 @@
+> Para uma publicação nova, siga primeiro `IMPLANTACAO-LIMPA.md`.
+
 # Ticket. Web
 
 Painel web mobile-first para registrar comprovantes de ponto e fotografias do ambiente de trabalho, organizar as batidas e calcular jornada, saldo diário e saldo mensal.
