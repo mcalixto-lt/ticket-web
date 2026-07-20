@@ -86,3 +86,7 @@ npm run build
 - `src/core/cloud/google-drive.js`: autorização e envio ao Google Drive.
 - `src/core/cloud/onedrive.js`: autorização e envio ao Microsoft OneDrive.
 - `public/ticket-service-worker-v143.js`: PWA publicada.
+
+## Atualização 1.5.2
+
+A versão 1.5.2 adiciona saldo anterior com histórico e período de fechamento mensal configurável. Os registros já confirmados permanecem imutáveis. Consulte `ATUALIZACAO-1.5.2.txt`.

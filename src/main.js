@@ -5,7 +5,10 @@ import {
   APP_NAME,
   DEFAULT_SCHEDULE,
   WEEKDAYS,
+  accumulatedTicketBalance,
   calculateRecord,
+  closingPeriodForDate,
+  closingPeriodForMonth,
   classifyPunches,
   cloneDefaultSchedule,
   firstName,
@@ -17,11 +20,14 @@ import {
   mergePunches,
   monthKey,
   monthName,
-  monthlySummary,
+  nextClosingPeriod,
+  normalizeClosingPeriodSettings,
   normalizeTime,
+  periodSummary,
   parseTimeToMinutes,
   recordStatusTone,
   scheduleForDate,
+  isContinuousClosingPeriod,
   todayIso,
   uuid,
 } from './core/logic.js';
@@ -43,11 +49,15 @@ import {
   listEvidenceForDate,
   listRecords,
   listSyncJobs,
+  loadBalanceSettings,
+  loadClosingPeriodSettings,
   loadCloudSettings,
   loadProfile,
   loadSchedule,
   loadTheme,
   migrateLegacyDataToCurrent,
+  saveBalanceSettings,
+  saveClosingPeriodSettings,
   saveCloudSettings,
   saveEvidence,
   saveRecordWithEvidence,
@@ -81,6 +91,9 @@ const state = {
   records: [],
   view: 'dashboard',
   selectedMonth: monthKey(todayIso()),
+  selectedReportMonth: monthKey(todayIso()),
+  balanceSettings: loadBalanceSettings(),
+  closingPeriod: loadClosingPeriodSettings(),
   sourceImage: null,
   selectedImage: null,
   selectedImageUrl: '',
@@ -134,6 +147,39 @@ function greetingForTime(date = new Date()) {
 
 function formatCurrentTime(date = new Date()) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+
+function formatPeriodLabel(period) {
+  if (!period?.startDate || !period?.endDate) return 'Período não definido';
+  return `${formatDateBr(period.startDate)} até ${formatDateBr(period.endDate)}`;
+}
+
+function balanceReferenceDate() {
+  return state.balanceSettings?.referenceDate || '';
+}
+
+function previousBalanceMinutes(throughDate = todayIso()) {
+  const referenceDate = balanceReferenceDate();
+  if (referenceDate && throughDate < referenceDate) return 0;
+  return Number(state.balanceSettings?.minutes || 0);
+}
+
+function calculatedTicketBalance(throughDate = todayIso()) {
+  return accumulatedTicketBalance(state.records, state.schedule, {
+    afterDate: balanceReferenceDate(),
+    throughDate,
+  });
+}
+
+function totalAccumulatedBalance(throughDate = todayIso()) {
+  return previousBalanceMinutes(throughDate) + calculatedTicketBalance(throughDate);
+}
+
+function dayOptions(selectedValue) {
+  return Array.from({ length: 31 }, (_, index) => index + 1)
+    .map((day) => `<option value="${day}" ${Number(selectedValue) === day ? 'selected' : ''}>${day}</option>`)
+    .join('');
 }
 
 function updateDashboardDateTime() {
@@ -452,6 +498,8 @@ function renderShell() {
   bindPersistentSessionActivity();
   startDashboardClock();
   renderProfileSummary();
+  renderBalanceSettings();
+  renderClosingPeriodSettings();
   renderScheduleEditor();
   renderStorageSettings();
   navigate(state.view, { stopCamera: false });
@@ -468,8 +516,16 @@ function dashboardViewTemplate() {
       <article class="stat-card"><span>Meta do Dia</span><strong id="dashExpectedToday">08h00</strong><small>Jornada prevista</small></article>
       <article class="stat-card"><span>Horas Trabalhadas</span><strong id="dashWorkedToday">00h00</strong><small>Atualizado a cada comprovante</small></article>
       <article class="stat-card"><span>Saldo do Dia</span><strong id="dashDayBalance">00h00</strong><small id="dashDayBalanceCaption">Aguardando registros</small></article>
-      <article class="stat-card"><span>Saldo do Mês</span><strong id="dashMonthBalance">00h00</strong><small>Horas acumuladas</small></article>
+      <article class="stat-card"><span>Saldo do Mês</span><strong id="dashMonthBalance">00h00</strong><small>Saldo do período atual</small></article>
     </div>
+    <article class="balance-overview-card">
+      <div class="balance-overview-grid">
+        <div><span>Saldo anterior informado</span><strong id="dashPreviousBalance">00h00</strong></div>
+        <div><span>Saldo calculado pelo Ticket.</span><strong id="dashTicketBalance">00h00</strong></div>
+        <div class="balance-total"><span>Saldo total acumulado</span><strong id="dashTotalBalance">00h00</strong></div>
+      </div>
+      <div class="current-period-banner">${icon('calendar', 18)}<span>Período atual: <strong id="dashCurrentPeriod">01/01/2026 até 31/01/2026</strong></span></div>
+    </article>
     <article class="panel-card recent-panel">
       <div class="panel-heading"><div><h3>Últimos registros</h3><p>Resumo das jornadas mais recentes</p></div><button class="text-button" data-view-target="history">Ver histórico ${icon('chevronRight', 16)}</button></div>
       <div class="desktop-table"><table><thead><tr><th>Data</th><th>Entrada</th><th>Almoço saída</th><th>Almoço volta</th><th>Saída final</th><th>Total</th><th>Saldo</th></tr></thead><tbody id="recentRecordsBody"></tbody></table></div>
@@ -556,21 +612,56 @@ function calendarViewTemplate() {
 
 function reportsViewTemplate() {
   return `<section class="view" data-view="reports">
-    <div class="section-intro split"><div><span class="eyebrow">Fechamento</span><h2>Relatório mensal</h2><p>Horas extras, negativas e saldo líquido.</p></div><div class="report-actions"><label class="compact-input"><span>Mês</span><input id="reportMonthPicker" type="month" value="${state.selectedMonth}" /></label><button id="exportBackupButton" class="button button-outline">${icon('download', 18)} Backup</button></div></div>
-    <div class="summary-grid"><article><span>Horas extras</span><strong id="reportPositive">+00h00</strong></article><article><span>Horas negativas</span><strong id="reportNegative">-00h00</strong></article><article><span>Saldo líquido</span><strong id="reportNet">00h00</strong></article><article><span>Registro Pendente</span><strong id="reportPending">0</strong></article></div>
+    <div class="section-intro split"><div><span class="eyebrow">Fechamento</span><h2>Relatório mensal</h2><p>Resumo conforme o período de fechamento configurado.</p></div><div class="report-actions"><label class="compact-input"><span>Mês de início</span><input id="reportMonthPicker" type="month" value="${state.selectedReportMonth}" /></label><button id="exportBackupButton" class="button button-outline">${icon('download', 18)} Backup</button></div></div>
+    <div class="report-period-banner">${icon('calendar', 19)}<span>Período selecionado: <strong id="reportPeriodRange">--/--/---- até --/--/----</strong></span></div>
+    <div class="summary-grid summary-grid-six"><article><span>Horas extras</span><strong id="reportPositive">+00h00</strong></article><article><span>Horas negativas</span><strong id="reportNegative">-00h00</strong></article><article><span>Saldo do período</span><strong id="reportNet">00h00</strong></article><article><span>Saldo anterior</span><strong id="reportPreviousBalance">00h00</strong></article><article><span>Saldo total acumulado</span><strong id="reportTotalBalance">00h00</strong></article><article><span>Registro Pendente</span><strong id="reportPending">0</strong></article></div>
     <article class="panel-card"><div class="desktop-table"><table><thead><tr><th>Data</th><th>Batidas</th><th>Trabalhado</th><th>Previsto</th><th>Saldo</th><th>Situação</th></tr></thead><tbody id="reportRecordsBody"></tbody></table></div><div id="reportMobileList" class="mobile-record-list"></div></article>
   </section>`;
 }
 
 function settingsViewTemplate() {
+  const closing = normalizeClosingPeriodSettings(state.closingPeriod);
+  const balanceType = state.balanceSettings?.type || (Number(state.balanceSettings?.minutes || 0) > 0 ? 'positive' : Number(state.balanceSettings?.minutes || 0) < 0 ? 'negative' : 'none');
+  const absoluteBalance = Math.abs(Number(state.balanceSettings?.minutes || 0));
   return `<section class="view" data-view="settings">
-    <div class="section-intro"><div><span class="eyebrow">Preferências</span><h2>Configurações</h2><p>Defina a jornada semanal. Dias já registrados não são recalculados.</p></div></div>
+    <div class="section-intro"><div><span class="eyebrow">Preferências</span><h2>Configurações</h2><p>Defina a jornada, o saldo anterior e o período mensal de fechamento. Os registros de ponto já salvos não serão alterados.</p></div></div>
     <div class="settings-grid">
       <article class="panel-card"><div class="panel-heading"><div><h3>Identificação bloqueada</h3><p>Dados confirmados no primeiro acesso.</p></div>${icon('lock', 21)}</div><dl id="profileDetails" class="profile-details"></dl></article>
-      <article class="panel-card schedule-card"><div class="panel-heading"><div><h3>Jornada semanal</h3><p>Segunda a sábado vêm ativados como padrão.</p></div><button id="saveScheduleButton" class="button button-navy">Salvar jornada</button></div><div id="scheduleEditor" class="schedule-editor"></div></article>
+
+      <article class="panel-card balance-settings-card">
+        <div class="panel-heading"><div><h3>Definir saldo anterior</h3><p>Informe o saldo que você já possuía antes de começar a registrar no Ticket.</p></div>${icon('clock', 22)}</div>
+        <form id="balanceSettingsForm" class="settings-form">
+          <label class="input-group light"><span>Tipo do saldo</span><select id="balanceType"><option value="positive" ${balanceType === 'positive' ? 'selected' : ''}>Positivo</option><option value="negative" ${balanceType === 'negative' ? 'selected' : ''}>Negativo</option><option value="none" ${balanceType === 'none' ? 'selected' : ''}>Sem saldo anterior</option></select></label>
+          <div class="settings-form-row">
+            <label class="input-group light"><span>Horas</span><input id="balanceHours" type="number" inputmode="numeric" min="0" max="9999" value="${Math.floor(absoluteBalance / 60)}" /></label>
+            <label class="input-group light"><span>Minutos</span><input id="balanceMinutes" type="number" inputmode="numeric" min="0" max="59" value="${absoluteBalance % 60}" /></label>
+          </div>
+          <label class="input-group light"><span>Data de referência</span><input id="balanceReferenceDate" type="date" value="${escapeHtml(state.balanceSettings?.referenceDate || todayIso())}" /></label>
+          <label class="input-group light"><span>Observação opcional</span><input id="balanceNote" type="text" maxlength="160" value="${escapeHtml(state.balanceSettings?.note || '')}" placeholder="Ex.: saldo informado pela empresa" /></label>
+          <p class="form-help">O saldo informado será considerado válido até a data de referência. O Ticket. somará apenas os registros posteriores a essa data.</p>
+          <button class="button button-navy button-block" type="submit">${icon('save', 18)} Salvar saldo anterior</button>
+        </form>
+        <div class="settings-subsection"><h4>${icon('history', 18)} Histórico de atualização</h4><div id="balanceHistoryList" class="balance-history-list"></div></div>
+      </article>
+
+      <article class="panel-card closing-period-card">
+        <div class="panel-heading"><div><h3>Período de fechamento do ponto</h3><p>Defina o dia inicial e o dia final de cada ciclo mensal.</p></div>${icon('calendar', 22)}</div>
+        <form id="closingPeriodForm" class="settings-form">
+          <label class="input-group light"><span>Modo de fechamento</span><select id="closingMode"><option value="calendar" ${closing.mode === 'calendar' ? 'selected' : ''}>Mês normal — dia 1 ao último dia</option><option value="custom" ${closing.mode === 'custom' ? 'selected' : ''}>Personalizado</option></select></label>
+          <div class="settings-form-row">
+            <label class="input-group light"><span>Dia inicial do ciclo</span><select id="closingStartDay">${dayOptions(closing.startDay)}</select></label>
+            <label class="input-group light"><span>Dia final do ciclo</span><select id="closingEndDay">${dayOptions(closing.endDay)}</select></label>
+          </div>
+          <p class="form-help">Para um ciclo contínuo, o dia final deve ser o dia imediatamente anterior ao dia inicial. Exemplo: 16 até 15.</p>
+          <div class="period-preview-card"><span>Período atual do ponto</span><strong id="currentPeriodPreview">--/--/---- até --/--/----</strong><hr/><span>Próximo período</span><strong id="nextPeriodPreview">--/--/---- até --/--/----</strong></div>
+          <button class="button button-navy button-block" type="submit">${icon('save', 18)} Salvar período</button>
+        </form>
+      </article>
+
+      <article class="panel-card schedule-card settings-span-2"><div class="panel-heading"><div><h3>Jornada semanal</h3><p>Segunda a sábado vêm ativados como padrão.</p></div><button id="saveScheduleButton" class="button button-navy">Salvar jornada</button></div><div id="scheduleEditor" class="schedule-editor"></div></article>
       <article class="panel-card"><div class="panel-heading"><div><h3>Instalação no celular</h3><p>Adicione o Ticket. à tela inicial para abrir como aplicativo.</p></div>${icon('download', 22)}</div><button id="installPwaButton" class="button button-outline" disabled>Instalar Ticket.</button><p class="muted-note">A opção fica disponível quando o navegador permite a instalação.</p></article>
       <article class="panel-card account-actions-card"><div class="panel-heading"><div><h3>Sessão da conta</h3><p>Encerre o acesso quando não for mais utilizar este dispositivo.</p></div>${icon('logout', 22)}</div><button id="settingsLogoutButton" class="button button-outline">Sair da conta</button></article>
-      <article class="panel-card danger-card"><div class="panel-heading"><div><h3>Redefinir instalação</h3><p>Apaga registros e imagens locais deste navegador. A conta na nuvem não é excluída.</p></div>${icon('trash', 22)}</div><button id="resetDataButton" class="button button-danger">Apagar dados locais</button></article>
+      <article class="panel-card danger-card settings-span-2"><div class="panel-heading"><div><h3>Redefinir instalação</h3><p>Apaga registros e imagens locais deste navegador. A conta na nuvem não é excluída.</p></div>${icon('trash', 22)}</div><button id="resetDataButton" class="button button-danger">Apagar dados locais</button></article>
     </div>
   </section>`;
 }
@@ -779,7 +870,8 @@ function renderDashboard() {
   const todaySchedule = todayRecord?.scheduleSnapshot || scheduleForDate(today, state.schedule);
   const times = punchTimes(todayRecord);
   const calc = todayRecord ? calculateRecord(todayRecord, state.schedule) : null;
-  const month = monthlySummary(state.records, state.schedule, monthKey(today));
+  const currentPeriod = closingPeriodForDate(today, state.closingPeriod);
+  const month = periodSummary(state.records, state.schedule, currentPeriod.startDate, currentPeriod.endDate);
   const required = Number(todaySchedule.requiredPunches || 4);
   const labels = labelsForPunches(required);
   const nextLabel = labels[times.length] || (times.length >= required ? 'Jornada concluída' : 'Entrada');
@@ -788,6 +880,19 @@ function renderDashboard() {
   const dayBalance = calc?.complete ? calc.balanceMinutes : null;
   document.querySelector('#dashMonthBalance').textContent = formatDuration(month.net, { signed: true, suffix: true });
   document.querySelector('#dashMonthBalance').className = month.net > 0 ? 'positive-text' : month.net < 0 ? 'negative-text' : '';
+  const previousBalance = previousBalanceMinutes(today);
+  const ticketBalance = calculatedTicketBalance(today);
+  const totalBalance = previousBalance + ticketBalance;
+  const previousElement = document.querySelector('#dashPreviousBalance');
+  const ticketElement = document.querySelector('#dashTicketBalance');
+  const totalElement = document.querySelector('#dashTotalBalance');
+  previousElement.textContent = formatDuration(previousBalance, { signed: true, suffix: true });
+  ticketElement.textContent = formatDuration(ticketBalance, { signed: true, suffix: true });
+  totalElement.textContent = formatDuration(totalBalance, { signed: true, suffix: true });
+  previousElement.className = previousBalance > 0 ? 'positive-text' : previousBalance < 0 ? 'negative-text' : '';
+  ticketElement.className = ticketBalance > 0 ? 'positive-text' : ticketBalance < 0 ? 'negative-text' : '';
+  totalElement.className = totalBalance > 0 ? 'positive-text' : totalBalance < 0 ? 'negative-text' : '';
+  document.querySelector('#dashCurrentPeriod').textContent = formatPeriodLabel(currentPeriod);
   document.querySelector('#dashPunchCount').textContent = `${times.length} de ${required}`;
   document.querySelector('#dashNextPunch').textContent = times.length >= required ? 'Jornada registrada' : `Próxima: ${nextLabel}`;
   document.querySelector('#dashWorkedToday').textContent = formatDuration(workedToday, { suffix: true });
@@ -859,9 +964,7 @@ function bindDashboardEvents() {
 function bindHistoryEvents() {
   document.querySelector('#historyMonthPicker')?.addEventListener('change', (event) => {
     state.selectedMonth = event.target.value || monthKey(todayIso());
-    document.querySelector('#reportMonthPicker').value = state.selectedMonth;
     renderHistory();
-    renderReports();
     renderCalendar();
   });
 }
@@ -945,12 +1048,9 @@ function shiftMonth(delta) {
   const date = new Date(year, month - 1 + delta, 1);
   state.selectedMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
   const historyPicker = document.querySelector('#historyMonthPicker');
-  const reportPicker = document.querySelector('#reportMonthPicker');
   if (historyPicker) historyPicker.value = state.selectedMonth;
-  if (reportPicker) reportPicker.value = state.selectedMonth;
   renderCalendar();
   renderHistory();
-  renderReports();
 }
 
 function renderCalendar() {
@@ -1009,12 +1109,8 @@ function renderCalendar() {
 
 function bindReportEvents() {
   document.querySelector('#reportMonthPicker')?.addEventListener('change', (event) => {
-    state.selectedMonth = event.target.value || monthKey(todayIso());
-    const historyPicker = document.querySelector('#historyMonthPicker');
-    if (historyPicker) historyPicker.value = state.selectedMonth;
+    state.selectedReportMonth = event.target.value || monthKey(closingPeriodForDate(todayIso(), state.closingPeriod).startDate);
     renderReports();
-    renderHistory();
-    renderCalendar();
   });
   document.querySelector('#exportBackupButton')?.addEventListener('click', async () => {
     try {
@@ -1029,24 +1125,35 @@ function bindReportEvents() {
 
 function renderReports() {
   const picker = document.querySelector('#reportMonthPicker');
-  if (picker) picker.value = state.selectedMonth;
-  const summary = monthlySummary(state.records, state.schedule, state.selectedMonth);
+  if (picker) picker.value = state.selectedReportMonth;
+  const period = closingPeriodForMonth(state.selectedReportMonth, state.closingPeriod);
+  const summary = periodSummary(state.records, state.schedule, period.startDate, period.endDate);
   const positive = document.querySelector('#reportPositive');
   const negative = document.querySelector('#reportNegative');
   const net = document.querySelector('#reportNet');
+  const previous = document.querySelector('#reportPreviousBalance');
+  const total = document.querySelector('#reportTotalBalance');
   const pending = document.querySelector('#reportPending');
+  const periodRange = document.querySelector('#reportPeriodRange');
   if (!positive) return;
   positive.textContent = formatDuration(summary.positive, { signed: true, suffix: true });
   negative.textContent = `-${formatDuration(summary.negative, { suffix: true })}`;
   net.textContent = formatDuration(summary.net, { signed: true, suffix: true });
   net.className = summary.net > 0 ? 'positive-text' : summary.net < 0 ? 'negative-text' : '';
+  const previousValue = previousBalanceMinutes(period.endDate);
+  const totalValue = totalAccumulatedBalance(period.endDate);
+  previous.textContent = formatDuration(previousValue, { signed: true, suffix: true });
+  previous.className = previousValue > 0 ? 'positive-text' : previousValue < 0 ? 'negative-text' : '';
+  total.textContent = formatDuration(totalValue, { signed: true, suffix: true });
+  total.className = totalValue > 0 ? 'positive-text' : totalValue < 0 ? 'negative-text' : '';
   pending.textContent = String(summary.pending);
+  periodRange.textContent = formatPeriodLabel(period);
 
   const body = document.querySelector('#reportRecordsBody');
   const mobile = document.querySelector('#reportMobileList');
   if (!summary.records.length) {
-    body.innerHTML = `<tr><td colspan="6">${emptyState('Nenhum registro neste mês')}</td></tr>`;
-    mobile.innerHTML = emptyState('Nenhum registro neste mês');
+    body.innerHTML = `<tr><td colspan="6">${emptyState('Nenhum registro neste período')}</td></tr>`;
+    mobile.innerHTML = emptyState('Nenhum registro neste período');
     return;
   }
   body.innerHTML = summary.records.map((record) => {
@@ -1065,6 +1172,12 @@ function renderProfileSummary() {
 
 function bindSettingsEvents() {
   document.querySelector('#saveScheduleButton')?.addEventListener('click', saveScheduleFromEditor);
+  document.querySelector('#balanceSettingsForm')?.addEventListener('submit', saveBalanceSettingsFromForm);
+  document.querySelector('#closingPeriodForm')?.addEventListener('submit', saveClosingPeriodFromForm);
+  document.querySelector('#balanceType')?.addEventListener('change', updateBalanceInputState);
+  document.querySelector('#closingMode')?.addEventListener('change', handleClosingModeChange);
+  document.querySelector('#closingStartDay')?.addEventListener('change', handleClosingStartDayChange);
+  document.querySelector('#closingEndDay')?.addEventListener('change', updateClosingPeriodPreviewFromForm);
   document.querySelector('#settingsLogoutButton')?.addEventListener('click', logout);
   document.querySelector('#resetDataButton')?.addEventListener('click', async () => {
     const confirmation = window.prompt('Digite APAGAR para excluir definitivamente os dados deste navegador.');
@@ -1094,6 +1207,144 @@ function bindSettingsEvents() {
     state.installPrompt = null;
     updateInstallButton();
   });
+}
+
+function updateBalanceInputState() {
+  const type = document.querySelector('#balanceType')?.value || 'none';
+  const disabled = type === 'none';
+  ['balanceHours', 'balanceMinutes'].forEach((id) => {
+    const field = document.querySelector(`#${id}`);
+    if (field) field.disabled = disabled;
+  });
+}
+
+function renderBalanceSettings() {
+  const historyTarget = document.querySelector('#balanceHistoryList');
+  if (!historyTarget) return;
+  updateBalanceInputState();
+  const history = [...(state.balanceSettings?.history || [])].sort((a, b) => String(b.changedAt).localeCompare(String(a.changedAt)));
+  if (!history.length) {
+    historyTarget.innerHTML = '<div class="empty-inline">Nenhuma atualização de saldo registrada.</div>';
+    return;
+  }
+  historyTarget.innerHTML = history.slice(0, 12).map((entry) => {
+    const changedAt = new Date(entry.changedAt);
+    const dateTime = Number.isNaN(changedAt.getTime()) ? 'Data não informada' : `${changedAt.toLocaleDateString('pt-BR')} às ${changedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    const previous = Number(entry.previousMinutes || 0);
+    const current = Number(entry.minutes || 0);
+    return `<div class="balance-history-item"><span>${icon('calendar', 16)}</span><div><small>${escapeHtml(dateTime)}</small><strong>Saldo alterado de ${formatDuration(previous, { signed: true, suffix: true })} para <b class="${current > 0 ? 'positive-text' : current < 0 ? 'negative-text' : ''}">${formatDuration(current, { signed: true, suffix: true })}</b></strong>${entry.note ? `<em>${escapeHtml(entry.note)}</em>` : ''}</div></div>`;
+  }).join('');
+}
+
+async function saveBalanceSettingsFromForm(event) {
+  event.preventDefault();
+  const type = document.querySelector('#balanceType')?.value || 'none';
+  const hours = Math.max(0, Number.parseInt(document.querySelector('#balanceHours')?.value || '0', 10) || 0);
+  const minutesPart = Number.parseInt(document.querySelector('#balanceMinutes')?.value || '0', 10) || 0;
+  const referenceDate = document.querySelector('#balanceReferenceDate')?.value || todayIso();
+  const note = document.querySelector('#balanceNote')?.value?.trim() || '';
+  if (minutesPart < 0 || minutesPart > 59) {
+    toast('Os minutos devem estar entre 0 e 59.', 'error');
+    return;
+  }
+  let minutes = hours * 60 + minutesPart;
+  if (type === 'negative') minutes *= -1;
+  if (type === 'none') minutes = 0;
+  const previousMinutes = Number(state.balanceSettings?.minutes || 0);
+  const confirmed = window.confirm(`Confirmar saldo anterior de ${formatDuration(minutes, { signed: true, suffix: true })}, válido até ${formatDateBr(referenceDate)}?\n\nAs batidas e os cálculos diários já registrados não serão alterados.`);
+  if (!confirmed) return;
+  const changedAt = new Date().toISOString();
+  state.balanceSettings = {
+    minutes,
+    type,
+    referenceDate,
+    note,
+    updatedAt: changedAt,
+    history: [
+      ...(state.balanceSettings?.history || []),
+      { id: uuid(), previousMinutes, minutes, referenceDate, note, changedAt },
+    ],
+  };
+  saveBalanceSettings(state.balanceSettings);
+  renderBalanceSettings();
+  renderDashboard();
+  renderReports();
+  toast('Saldo anterior salvo sem alterar os registros de ponto.', 'success', 6000);
+}
+
+function closingDraftFromForm() {
+  const mode = document.querySelector('#closingMode')?.value === 'custom' ? 'custom' : 'calendar';
+  return normalizeClosingPeriodSettings({
+    mode,
+    startDay: Number(document.querySelector('#closingStartDay')?.value || 1),
+    endDay: Number(document.querySelector('#closingEndDay')?.value || 31),
+  });
+}
+
+function updateClosingPeriodPreviewFromForm() {
+  const draft = closingDraftFromForm();
+  const current = closingPeriodForDate(todayIso(), draft);
+  const next = nextClosingPeriod(current, draft);
+  const currentTarget = document.querySelector('#currentPeriodPreview');
+  const nextTarget = document.querySelector('#nextPeriodPreview');
+  if (currentTarget) currentTarget.textContent = formatPeriodLabel(current);
+  if (nextTarget) nextTarget.textContent = formatPeriodLabel(next);
+}
+
+function handleClosingModeChange() {
+  const mode = document.querySelector('#closingMode')?.value || 'calendar';
+  const start = document.querySelector('#closingStartDay');
+  const end = document.querySelector('#closingEndDay');
+  if (!start || !end) return;
+  if (mode === 'calendar') {
+    start.value = '1';
+    end.value = '31';
+  } else if (start.value === '1' && end.value === '31') {
+    start.value = '16';
+    end.value = '15';
+  }
+  start.disabled = mode === 'calendar';
+  end.disabled = mode === 'calendar';
+  updateClosingPeriodPreviewFromForm();
+}
+
+function handleClosingStartDayChange() {
+  const start = Number(document.querySelector('#closingStartDay')?.value || 1);
+  const end = document.querySelector('#closingEndDay');
+  if (end) end.value = String(start === 1 ? 31 : start - 1);
+  updateClosingPeriodPreviewFromForm();
+}
+
+function renderClosingPeriodSettings() {
+  const mode = document.querySelector('#closingMode');
+  const start = document.querySelector('#closingStartDay');
+  const end = document.querySelector('#closingEndDay');
+  if (!mode || !start || !end) return;
+  const closing = normalizeClosingPeriodSettings(state.closingPeriod);
+  mode.value = closing.mode;
+  start.value = String(closing.startDay);
+  end.value = String(closing.endDay);
+  start.disabled = closing.mode === 'calendar';
+  end.disabled = closing.mode === 'calendar';
+  updateClosingPeriodPreviewFromForm();
+}
+
+function saveClosingPeriodFromForm(event) {
+  event.preventDefault();
+  const draft = closingDraftFromForm();
+  if (!isContinuousClosingPeriod(draft)) {
+    const expectedEnd = draft.startDay === 1 ? 31 : draft.startDay - 1;
+    toast(`Para manter ciclos mensais contínuos, use o dia final ${expectedEnd} para um ciclo iniciado no dia ${draft.startDay}.`, 'error', 7000);
+    return;
+  }
+  state.closingPeriod = { ...draft, updatedAt: new Date().toISOString() };
+  saveClosingPeriodSettings(state.closingPeriod);
+  const current = closingPeriodForDate(todayIso(), state.closingPeriod);
+  state.selectedReportMonth = monthKey(current.startDate);
+  renderClosingPeriodSettings();
+  renderDashboard();
+  renderReports();
+  toast(`Período mensal salvo: ${formatPeriodLabel(current)}.`, 'success', 6000);
 }
 
 function renderScheduleEditor() {
@@ -1708,6 +1959,9 @@ async function bootApp() {
   }
   setStorageNamespace(state.profile.id || state.profile.cpfHash?.slice(0, 24) || 'default');
   state.schedule = loadSchedule(DEFAULT_SCHEDULE);
+  state.balanceSettings = loadBalanceSettings();
+  state.closingPeriod = loadClosingPeriodSettings();
+  state.selectedReportMonth = monthKey(closingPeriodForDate(todayIso(), state.closingPeriod).startDate);
   const storedCloud = loadCloudSettings();
   state.cloud = {
     ...storedCloud,
@@ -1768,18 +2022,18 @@ async function registerTicketServiceWorker() {
 
     await Promise.all(
       registrations
-        .filter((registration) => !registration.active?.scriptURL.includes('ticket-service-worker-v150.js'))
+        .filter((registration) => !registration.active?.scriptURL.includes('ticket-service-worker-v152.js'))
         .map((registration) => registration.unregister()),
     );
 
     if ('caches' in window) {
       const cacheKeys = await caches.keys();
       await Promise.all(cacheKeys
-        .filter((key) => key === 'pontoscan-v1' || (key.startsWith('ticket-shell-') && key !== 'ticket-shell-v150'))
+        .filter((key) => key === 'pontoscan-v1' || (key.startsWith('ticket-shell-') && key !== 'ticket-shell-v152'))
         .map((key) => caches.delete(key)));
     }
 
-    await navigator.serviceWorker.register('./ticket-service-worker-v150.js', {
+    await navigator.serviceWorker.register('./ticket-service-worker-v152.js', {
       scope: './',
       updateViaCache: 'none',
     });

@@ -762,3 +762,96 @@ html[data-theme="dark"] .environment-alert { color: #9bc4ff; background: #102a4b
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+/* Ticket. 1.5.2 — saldo anterior e período de fechamento */
+.balance-overview-card {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 18px;
+  border: 1px solid rgba(231, 185, 72, .72);
+  border-radius: var(--radius);
+  color: #fff;
+  background: linear-gradient(145deg, #061b3a, #0b2851);
+  box-shadow: var(--shadow-sm);
+}
+.balance-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.balance-overview-grid > div { min-width: 0; padding: 5px 18px; text-align: center; }
+.balance-overview-grid > div + div { border-left: 1px solid rgba(243, 205, 105, .4); }
+.balance-overview-grid span, .balance-overview-grid strong { display: block; }
+.balance-overview-grid span { min-height: 34px; color: #d9e3ef; font-size: .72rem; line-height: 1.35; }
+.balance-overview-grid strong { margin-top: 7px; color: var(--gold-400); font-size: clamp(1.25rem, 2.6vw, 1.65rem); letter-spacing: -.03em; }
+.balance-overview-grid .positive-text { color: #69e0a5; }
+.balance-overview-grid .negative-text { color: #ff9ca0; }
+.current-period-banner, .report-period-banner {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 10px 14px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: .76rem;
+  text-align: center;
+}
+.current-period-banner { color: #102448; background: #f8fbff; }
+.report-period-banner { margin: 0 0 16px; }
+.report-period-banner svg { color: var(--gold-500); }
+.summary-grid-six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.summary-grid-six article { min-width: 0; }
+.summary-grid-six strong { overflow-wrap: anywhere; }
+.settings-span-2 { grid-column: 1 / -1; }
+.settings-form { display: grid; gap: 14px; }
+.settings-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.input-group.light select, .input-group.light textarea { color: var(--text); background: #fff; border-color: var(--line); }
+.form-help { margin: -3px 0 0; color: var(--muted); font-size: .7rem; line-height: 1.5; }
+.settings-subsection { display: grid; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.settings-subsection h4 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: .83rem; }
+.balance-history-list { display: grid; gap: 8px; }
+.balance-history-item { display: grid; grid-template-columns: 30px 1fr; gap: 9px; align-items: start; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); }
+.balance-history-item > span { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 9px; color: var(--warning); background: var(--warning-soft); }
+.balance-history-item small, .balance-history-item strong, .balance-history-item em { display: block; }
+.balance-history-item small { color: var(--muted); font-size: .65rem; }
+.balance-history-item strong { margin-top: 3px; color: var(--text); font-size: .72rem; line-height: 1.45; }
+.balance-history-item em { margin-top: 3px; color: var(--muted); font-size: .67rem; font-style: normal; }
+.empty-inline { padding: 12px; border: 1px dashed var(--line); border-radius: 9px; color: var(--muted); font-size: .7rem; text-align: center; }
+.period-preview-card { display: grid; gap: 5px; padding: 15px; border: 1px solid #b8c9df; border-radius: 12px; background: #f8fbff; }
+.period-preview-card span { color: var(--muted); font-size: .67rem; }
+.period-preview-card strong { color: var(--navy-900); font-size: .91rem; }
+.period-preview-card hr { width: 100%; margin: 8px 0; border: 0; border-top: 1px dashed #b8c9df; }
+
+html[data-theme="dark"] .current-period-banner,
+html[data-theme="dark"] .report-period-banner,
+html[data-theme="dark"] .period-preview-card { color: #f1f5fb; background: #0b1a2c; border-color: #354a65; }
+html[data-theme="dark"] .period-preview-card strong { color: #f1f5fb; }
+html[data-theme="dark"] .balance-history-item { background: #0b1a2c; border-color: #354a65; }
+html[data-theme="dark"] .balance-history-item > span { color: #ffd878; background: #352b12; }
+html[data-theme="dark"] .balance-history-item strong,
+html[data-theme="dark"] .settings-subsection h4 { color: #f1f5fb; }
+html[data-theme="dark"] .current-period-banner { color: #f1f5fb; }
+
+@media (max-width: 1180px) {
+  .summary-grid-six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .balance-overview-card { padding: 13px; }
+  .balance-overview-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .balance-overview-grid > div { padding: 4px 7px; }
+  .balance-overview-grid span { min-height: 45px; font-size: .61rem; }
+  .balance-overview-grid strong { font-size: 1.08rem; }
+  .current-period-banner, .report-period-banner { align-items: flex-start; font-size: .7rem; }
+  .settings-form-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .summary-grid-six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .settings-span-2 { grid-column: auto; }
+}
+
+@media (max-width: 390px) {
+  .balance-overview-grid { grid-template-columns: 1fr; }
+  .balance-overview-grid > div + div { border-left: 0; border-top: 1px solid rgba(243, 205, 105, .32); padding-top: 11px; }
+  .balance-overview-grid span { min-height: 0; }
+  .settings-form-row { grid-template-columns: 1fr; }
+}

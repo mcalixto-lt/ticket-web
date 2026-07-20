@@ -1,0 +1,27 @@
+TICKET. WEB 1.5.2 — SALDO ANTERIOR E PERÍODO DE FECHAMENTO
+
+Novidades:
+- Configuração de saldo anterior positivo, negativo ou zerado.
+- Data de referência e observação do saldo informado.
+- Histórico de todas as alterações de saldo.
+- Nenhuma batida, fotografia ou cálculo diário existente é modificado.
+- Período mensal de fechamento configurável, inclusive ciclos como 16 até 15.
+- Painel com saldo anterior, saldo calculado pelo Ticket. e saldo total acumulado.
+- Exibição do período atual no painel.
+- Relatório mensal passa a respeitar o ciclo configurado.
+- Backup leve inclui as novas configurações.
+- PWA atualizada para o cache v152.
+
+REGRA DO SALDO
+O saldo informado é considerado válido até a data de referência. O Ticket. soma ao saldo anterior apenas os registros completos posteriores a essa data.
+
+ATUALIZAÇÃO NO GITHUB/RENDER
+1. Extraia este ZIP.
+2. No repositório ticket-web, use Add file > Upload files.
+3. Envie todo o conteúdo interno desta pasta e substitua os arquivos existentes.
+4. Faça o commit: "Adicionar saldo anterior e período de fechamento".
+5. Aguarde o Render concluir o deploy com status Live.
+
+IMPORTANTE
+Este pacote não contém render.yaml. Assim, o Client ID do Google Drive já configurado no Blueprint não será substituído.
+Não limpe os dados do navegador, pois os perfis e registros atuais continuam armazenados localmente.

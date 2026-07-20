@@ -320,6 +320,125 @@ export function monthlySummary(records = [], schedule = DEFAULT_SCHEDULE, select
   return { records: selected, positive, negative, net: positive - negative, pending, completeDays };
 }
 
+
+function clampDay(value, fallback = 1) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(31, Math.max(1, parsed));
+}
+
+function isoForMonthDay(year, monthIndex, day) {
+  const base = new Date(year, monthIndex, 1, 12, 0, 0, 0);
+  const normalizedYear = base.getFullYear();
+  const normalizedMonth = base.getMonth();
+  const lastDay = new Date(normalizedYear, normalizedMonth + 1, 0, 12).getDate();
+  const safeDay = Math.min(clampDay(day), lastDay);
+  return `${normalizedYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
+}
+
+
+function shiftIsoDays(isoDate, amount) {
+  const date = new Date(`${isoDate}T12:00:00`);
+  date.setDate(date.getDate() + amount);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export function normalizeClosingPeriodSettings(settings = {}) {
+  if (settings?.mode !== 'custom') return { mode: 'calendar', startDay: 1, endDay: 31 };
+  const startDay = clampDay(settings.startDay, 16);
+  const suggestedEnd = startDay === 1 ? 31 : startDay - 1;
+  return {
+    mode: 'custom',
+    startDay,
+    endDay: clampDay(settings.endDay, suggestedEnd),
+  };
+}
+
+export function isContinuousClosingPeriod(settings = {}) {
+  const normalized = normalizeClosingPeriodSettings(settings);
+  if (normalized.mode === 'calendar') return true;
+  return normalized.endDay === (normalized.startDay === 1 ? 31 : normalized.startDay - 1);
+}
+
+export function closingPeriodForDate(isoDate = todayIso(), settings = {}) {
+  const normalized = normalizeClosingPeriodSettings(settings);
+  const [year, month] = String(isoDate).split('-').map(Number);
+  if (normalized.mode === 'calendar') {
+    return {
+      startDate: isoForMonthDay(year, month - 1, 1),
+      endDate: isoForMonthDay(year, month - 1, 31),
+      mode: normalized.mode,
+    };
+  }
+
+  const startThisMonth = isoForMonthDay(year, month - 1, normalized.startDay);
+  const startsThisMonth = String(isoDate) >= startThisMonth;
+  const startMonthIndex = startsThisMonth ? month - 1 : month - 2;
+  const startDate = isoForMonthDay(year, startMonthIndex, normalized.startDay);
+  const nextStartDate = isoForMonthDay(year, startMonthIndex + 1, normalized.startDay);
+  return {
+    startDate,
+    endDate: shiftIsoDays(nextStartDate, -1),
+    mode: normalized.mode,
+  };
+}
+
+export function closingPeriodForMonth(selectedMonth = monthKey(todayIso()), settings = {}) {
+  const normalized = normalizeClosingPeriodSettings(settings);
+  const [year, month] = String(selectedMonth).split('-').map(Number);
+  if (normalized.mode === 'calendar') {
+    return {
+      startDate: isoForMonthDay(year, month - 1, 1),
+      endDate: isoForMonthDay(year, month - 1, 31),
+      mode: normalized.mode,
+    };
+  }
+  const startDate = isoForMonthDay(year, month - 1, normalized.startDay);
+  const nextStartDate = isoForMonthDay(year, month, normalized.startDay);
+  return {
+    startDate,
+    endDate: shiftIsoDays(nextStartDate, -1),
+    mode: normalized.mode,
+  };
+}
+
+export function nextClosingPeriod(period, settings = {}) {
+  const end = new Date(`${period.endDate}T12:00:00`);
+  end.setDate(end.getDate() + 1);
+  const nextDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+  return closingPeriodForDate(nextDate, settings);
+}
+
+export function periodSummary(records = [], schedule = DEFAULT_SCHEDULE, startDate, endDate) {
+  const selected = records
+    .filter((record) => record.date >= startDate && record.date <= endDate)
+    .map((record) => ({ ...record, calculation: calculateRecord(record, schedule) }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  let positive = 0;
+  let negative = 0;
+  let pending = 0;
+  let completeDays = 0;
+  for (const record of selected) {
+    if (!record.calculation.complete) pending += 1;
+    else {
+      completeDays += 1;
+      if (record.calculation.balanceMinutes > 0) positive += record.calculation.balanceMinutes;
+      if (record.calculation.balanceMinutes < 0) negative += Math.abs(record.calculation.balanceMinutes);
+    }
+  }
+  return { records: selected, positive, negative, net: positive - negative, pending, completeDays, startDate, endDate };
+}
+
+export function accumulatedTicketBalance(records = [], schedule = DEFAULT_SCHEDULE, { afterDate = '', throughDate = todayIso() } = {}) {
+  return records.reduce((total, record) => {
+    if (afterDate && record.date <= afterDate) return total;
+    if (throughDate && record.date > throughDate) return total;
+    const calculation = calculateRecord(record, schedule);
+    return calculation.complete ? total + calculation.balanceMinutes : total;
+  }, 0);
+}
+
 export function recordStatusTone(calculation) {
   if (!calculation.complete) return 'warning';
   if (calculation.balanceMinutes > 0) return 'positive';

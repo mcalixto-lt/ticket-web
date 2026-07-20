@@ -10,6 +10,8 @@ const SESSION_KEY = 'ticket.session.v3';
 const SESSION_MIGRATION_KEY = 'ticket.session.migrated.v3';
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 const THEME_KEY = 'ticket.theme.v1';
+const BALANCE_SETTINGS_KEY = 'ticket.balance-settings.v1';
+const CLOSING_PERIOD_KEY = 'ticket.closing-period.v1';
 
 let storageNamespace = 'default';
 let dbPromise;
@@ -177,6 +179,50 @@ export function loadSchedule(defaultSchedule) {
 
 export function saveSchedule(schedule) {
   localStorage.setItem(namespacedKey('ticket.schedule.v2'), JSON.stringify(schedule));
+}
+
+
+export function loadBalanceSettings() {
+  const defaults = {
+    minutes: 0,
+    type: 'none',
+    referenceDate: '',
+    note: '',
+    history: [],
+    updatedAt: null,
+  };
+  const raw = localStorage.getItem(namespacedKey(BALANCE_SETTINGS_KEY));
+  if (!raw) return defaults;
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      ...defaults,
+      ...parsed,
+      minutes: Number(parsed?.minutes || 0),
+      history: Array.isArray(parsed?.history) ? parsed.history : [],
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+export function saveBalanceSettings(settings) {
+  localStorage.setItem(namespacedKey(BALANCE_SETTINGS_KEY), JSON.stringify(settings));
+}
+
+export function loadClosingPeriodSettings() {
+  const defaults = { mode: 'calendar', startDay: 1, endDay: 31, updatedAt: null };
+  const raw = localStorage.getItem(namespacedKey(CLOSING_PERIOD_KEY));
+  if (!raw) return defaults;
+  try {
+    return { ...defaults, ...JSON.parse(raw) };
+  } catch {
+    return defaults;
+  }
+}
+
+export function saveClosingPeriodSettings(settings) {
+  localStorage.setItem(namespacedKey(CLOSING_PERIOD_KEY), JSON.stringify(settings));
 }
 
 export function loadCloudSettings() {
@@ -450,12 +496,16 @@ export async function exportBackup() {
   const profile = loadProfile();
   const schedule = loadSchedule(null);
   const cloud = loadCloudSettings();
+  const balanceSettings = loadBalanceSettings();
+  const closingPeriod = loadClosingPeriodSettings();
   const payload = {
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     profile: profile ? { ...profile, cpfHash: undefined } : null,
     schedule,
     cloud: { provider: cloud.provider, keepLocalCopy: cloud.keepLocalCopy },
+    balanceSettings,
+    closingPeriod,
     records,
     syncQueue,
     note: 'As imagens não são incluídas neste backup leve. Use Drive ou OneDrive para preservar as fotografias.',
@@ -466,6 +516,8 @@ export async function exportBackup() {
 export async function clearAllData({ removeAccount = true } = {}) {
   localStorage.removeItem(namespacedKey('ticket.schedule.v2'));
   localStorage.removeItem(namespacedKey('ticket.cloud.v2'));
+  localStorage.removeItem(namespacedKey(BALANCE_SETTINGS_KEY));
+  localStorage.removeItem(namespacedKey(CLOSING_PERIOD_KEY));
   localStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(LEGACY_SESSION_KEY);
   localStorage.setItem(SESSION_MIGRATION_KEY, '1');

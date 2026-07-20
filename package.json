@@ -1,9 +1,9 @@
 {
   "name": "ticket-web",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "private": true,
   "type": "module",
-  "description": "Ticket. — painel web mobile-first com implantação limpa, PWA e Google Drive.",
+  "description": "Ticket. — painel web mobile-first com saldo anterior, período de fechamento, PWA e Google Drive.",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",

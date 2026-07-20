@@ -67,9 +67,9 @@ test('marca principal usa SVG incorporado e favicons públicos absolutos', async
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(main, /<svg class="brand-icon"/);
   assert.doesNotMatch(main, /<img src="\.\/icons\/favicon\.svg"/);
-  assert.match(html, /href="\/favicon-v150\.ico"/);
-  assert.match(html, /href="\/apple-touch-icon-v150\.png"/);
-  assert.match(html, /href="\/manifest-v150\.webmanifest"/);
+  assert.match(html, /href="\/favicon-v152\.ico"/);
+  assert.match(html, /href="\/apple-touch-icon-v152\.png"/);
+  assert.match(html, /href="\/manifest-v152\.webmanifest"/);
 });
 
 
@@ -112,4 +112,30 @@ test('tela de acesso mostra saudação dinâmica acima das abas', () => {
   assert.ok(tabsIndex > greetingIndex, 'saudação deve aparecer acima das abas');
   assert.match(mainSource, /id="authGreeting"/);
   assert.match(mainSource, /startAuthGreetingClock\(\)/);
+});
+
+
+test('painel mostra saldo anterior, saldo calculado, total e período atual', () => {
+  assert.match(mainSource, /id="dashPreviousBalance"/);
+  assert.match(mainSource, /id="dashTicketBalance"/);
+  assert.match(mainSource, /id="dashTotalBalance"/);
+  assert.match(mainSource, /id="dashCurrentPeriod"/);
+  assert.match(mainSource, /Saldo anterior informado/);
+  assert.match(mainSource, /Saldo total acumulado/);
+});
+
+test('configurações possuem saldo anterior com histórico sem alterar batidas', () => {
+  assert.match(mainSource, /id="balanceSettingsForm"/);
+  assert.match(mainSource, /id="balanceHistoryList"/);
+  assert.match(mainSource, /As batidas e os cálculos diários já registrados não serão alterados/);
+  assert.match(mainSource, /saveBalanceSettings\(state\.balanceSettings\)/);
+});
+
+test('configurações possuem ciclo mensal e relatório por período', () => {
+  assert.match(mainSource, /id="closingPeriodForm"/);
+  assert.match(mainSource, /id="closingStartDay"/);
+  assert.match(mainSource, /id="closingEndDay"/);
+  assert.match(mainSource, /id="currentPeriodPreview"/);
+  assert.match(mainSource, /periodSummary\(state\.records/);
+  assert.match(mainSource, /id="reportPeriodRange"/);
 });

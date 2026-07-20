@@ -1,11 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  accumulatedTicketBalance,
   calculateWorkedMinutes,
+  closingPeriodForDate,
+  closingPeriodForMonth,
   extractTicketFields,
   isValidCpf,
   monthlySummary,
+  nextClosingPeriod,
   normalizeTime,
+  periodSummary,
 } from '../src/core/logic.js';
 
 test('valida CPF conhecido', () => {
@@ -88,4 +93,51 @@ test('recupera hora com hífen e ruído antes do rótulo', () => {
   const result = extractTicketFields('006HORA:O7-54', 80);
   assert.deepEqual(result.times, ['07:54']);
   assert.equal(result.anchors.hora, true);
+});
+
+
+test('calcula período personalizado de 16 até 15', () => {
+  const settings = { mode: 'custom', startDay: 16, endDay: 15 };
+  assert.deepEqual(closingPeriodForDate('2026-07-18', settings), {
+    startDate: '2026-07-16',
+    endDate: '2026-08-15',
+    mode: 'custom',
+  });
+  assert.deepEqual(closingPeriodForDate('2026-07-10', settings), {
+    startDate: '2026-06-16',
+    endDate: '2026-07-15',
+    mode: 'custom',
+  });
+});
+
+test('gera período por mês de início e próximo ciclo', () => {
+  const settings = { mode: 'custom', startDay: 16, endDay: 15 };
+  const period = closingPeriodForMonth('2026-07', settings);
+  assert.equal(period.startDate, '2026-07-16');
+  assert.equal(period.endDate, '2026-08-15');
+  const next = nextClosingPeriod(period, settings);
+  assert.equal(next.startDate, '2026-08-16');
+  assert.equal(next.endDate, '2026-09-15');
+});
+
+test('resume somente registros dentro do período configurado', () => {
+  const records = [
+    { date: '2026-07-15', punches: ['08:00', '12:00', '14:00', '18:30'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+    { date: '2026-07-16', punches: ['08:00', '12:00', '14:00', '18:20'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+    { date: '2026-08-15', punches: ['08:00', '12:00', '14:00', '17:50'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+    { date: '2026-08-16', punches: ['08:00', '12:00', '14:00', '18:40'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+  ];
+  const summary = periodSummary(records, {}, '2026-07-16', '2026-08-15');
+  assert.equal(summary.records.length, 2);
+  assert.equal(summary.positive, 20);
+  assert.equal(summary.negative, 10);
+  assert.equal(summary.net, 10);
+});
+
+test('saldo calculado pelo Ticket considera apenas datas posteriores à referência', () => {
+  const records = [
+    { date: '2026-07-10', punches: ['08:00', '12:00', '14:00', '18:30'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+    { date: '2026-07-18', punches: ['08:00', '12:00', '14:00', '18:20'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+  ];
+  assert.equal(accumulatedTicketBalance(records, {}, { afterDate: '2026-07-15', throughDate: '2026-07-31' }), 20);
 });
