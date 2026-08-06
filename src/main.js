@@ -590,9 +590,8 @@ function scanViewTemplate() {
             <div class="column-title">${icon(isEnvironment ? 'lock' : 'edit', 18)} <strong>Informação utilizada no cálculo</strong></div>
             <label><span>Data</span><input id="confirmedDateField" type="date" required ${isEnvironment ? 'readonly' : ''} /></label>
             <div class="time-selector-field">
-              <span class="field-caption">Horário(s)</span>
+              <span class="field-caption">Horário</span>
               <div id="confirmedTimesList" class="confirmed-times-list"></div>
-              ${isEnvironment ? '' : `<button id="addConfirmedTimeButton" class="button button-outline add-time-button" type="button">${icon('clock', 17)} Adicionar outro horário</button>`}
               <small class="time-selector-help">${isEnvironment ? 'Horário verificado automaticamente pela internet.' : 'Toque no campo para selecionar a hora no relógio do celular.'}</small>
             </div>
             <div><span class="field-caption">Classificação automática</span><div id="classificationPreview" class="classification-preview"></div></div>
@@ -691,7 +690,7 @@ function storageViewTemplate() {
         <div id="googleConfig" class="provider-config">
           <div class="integration-state ${googleConfigured ? 'ready' : 'pending'}">${icon(googleConfigured ? 'check' : 'alert', 19)}<span>${googleConfigured ? 'Integração Google preparada para autorização.' : 'Integração Google ainda não configurada nesta instalação.'}</span></div>
           <button id="connectGoogleButton" class="button button-outline" ${googleConfigured ? '' : 'disabled'}>${googleConfigured ? 'Conectar minha conta Google Drive' : 'Configuração do administrador necessária'}</button>
-          <div class="google-test-note">${icon('info', 17)}<span>Se o Google mostrar “Erro 403: access_denied”, a conta usada precisa estar em <strong>Google Auth Platform → Público-alvo → Usuários de teste</strong>, ou o app precisa ser publicado em produção.</span></div>
+          <div class="google-test-note">${icon('info', 17)}<span>Se o Google mostrar “Erro 403: access_denied”, o aplicativo está em modo de teste e a conta escolhida não foi autorizada. Adicione exatamente esse e-mail em <strong>Google Auth Platform → Público-alvo → Usuários de teste</strong> ou publique o app em produção.</span></div>
         </div>
         <div id="microsoftConfig" class="provider-config">
           <div class="integration-state ${microsoftConfigured ? 'ready' : 'pending'}">${icon(microsoftConfigured ? 'check' : 'alert', 19)}<span>${microsoftConfigured ? 'Integração Microsoft preparada para autorização.' : 'Integração Microsoft ainda não configurada nesta instalação.'}</span></div>
@@ -795,26 +794,23 @@ async function logout() {
 function applyTheme(theme) {
   state.theme = theme === 'dark' ? 'dark' : 'light';
   document.documentElement.dataset.theme = state.theme;
-
-
-function effectiveGoogleClientId() {
-  return String(runtimeConfig.googleClientId || state.cloud.googleClientId || '').trim();
-}
-
-function effectiveMicrosoftClientId() {
-  return String(runtimeConfig.microsoftClientId || state.cloud.microsoftClientId || '').trim();
-}
-
-function effectiveMicrosoftTenantId() {
-  return String(runtimeConfig.microsoftTenantId || state.cloud.microsoftTenantId || 'common').trim() || 'common';
-}
   saveTheme(state.theme);
+}
+
+function updateThemeControls() {
+  const nextIcon = state.theme === 'dark' ? 'sun' : 'moon';
+  const nextLabel = state.theme === 'dark' ? 'Modo claro' : 'Modo noturno';
+  const desktopButton = document.querySelector('#themeToggleButton');
+  const mobileHeaderButton = document.querySelector('#mobileHeaderThemeButton');
+  const mobileMenuButton = document.querySelector('#mobileThemeButton');
+  if (desktopButton) desktopButton.innerHTML = icon(nextIcon, 20);
+  if (mobileHeaderButton) mobileHeaderButton.innerHTML = icon(nextIcon, 20);
+  if (mobileMenuButton) mobileMenuButton.innerHTML = `${icon(nextIcon)}<span>${nextLabel}</span>`;
 }
 
 function toggleTheme() {
   applyTheme(state.theme === 'dark' ? 'light' : 'dark');
-  if (document.querySelector('.app-shell')) renderShell();
-  else renderLogin();
+  updateThemeControls();
 }
 
 function browserHistoryDepth() {
@@ -1640,7 +1636,6 @@ function bindScanEvents() {
   });
   document.querySelector('#reviewForm')?.addEventListener('submit', saveConfirmedRecord);
   document.querySelector('#confirmedDateField')?.addEventListener('input', updateReviewClassification);
-  document.querySelector('#addConfirmedTimeButton')?.addEventListener('click', addConfirmedTimeInput);
 }
 
 async function openCamera({ automatic = false } = {}) {
@@ -1846,32 +1841,15 @@ function confirmedTimeValues() {
 function renderConfirmedTimeInputs(values = [''], { readonly = false } = {}) {
   const target = document.querySelector('#confirmedTimesList');
   if (!target) return;
-  const normalized = values.length ? values : [''];
-  target.innerHTML = normalized.map((value, index) => `
-    <div class="confirmed-time-row">
+  const value = values.find((item) => normalizeTime(item)) || values[0] || '';
+  target.innerHTML = `
+    <div class="confirmed-time-row single-time-row">
       <label>
-        <span>${readonly ? 'Horário verificado' : `Horário ${index + 1}`}</span>
-        <input class="confirmed-time-input" type="time" step="60" value="${escapeHtml(value || '')}" ${readonly ? 'readonly' : ''} required />
+        <span>${readonly ? 'Horário verificado' : 'Horário'}</span>
+        <input class="confirmed-time-input" type="time" step="60" value="${escapeHtml(value)}" ${readonly ? 'readonly' : ''} required />
       </label>
-      ${!readonly && normalized.length > 1 ? `<button type="button" class="icon-button remove-confirmed-time" data-time-index="${index}" title="Remover horário">${icon('close', 17)}</button>` : ''}
-    </div>`).join('');
-  target.querySelectorAll('.confirmed-time-input').forEach((input) => input.addEventListener('input', updateReviewClassification));
-  target.querySelectorAll('.remove-confirmed-time').forEach((button) => button.addEventListener('click', () => {
-    const current = [...document.querySelectorAll('.confirmed-time-input')].map((input) => input.value);
-    current.splice(Number(button.dataset.timeIndex), 1);
-    renderConfirmedTimeInputs(current.length ? current : ['']);
-    updateReviewClassification();
-  }));
-}
-
-function addConfirmedTimeInput() {
-  const current = [...document.querySelectorAll('.confirmed-time-input')].map((input) => input.value);
-  if (current.length >= 4) {
-    toast('É possível selecionar até quatro horários por comprovante.', 'info');
-    return;
-  }
-  renderConfirmedTimeInputs([...current, '']);
-  document.querySelectorAll('.confirmed-time-input').item(current.length)?.focus();
+    </div>`;
+  target.querySelector('.confirmed-time-input')?.addEventListener('input', updateReviewClassification);
 }
 
 async function prepareManualReview() {
@@ -1932,7 +1910,7 @@ async function saveConfirmedRecord(event) {
     return;
   }
   if (!confirmedTimes.length) {
-    toast('Informe pelo menos um horário válido.', 'error');
+    toast('Selecione um horário válido.', 'error');
     return;
   }
 
@@ -2173,18 +2151,18 @@ async function registerTicketServiceWorker() {
 
     await Promise.all(
       registrations
-        .filter((registration) => !registration.active?.scriptURL.includes('ticket-service-worker-v160.js'))
+        .filter((registration) => !registration.active?.scriptURL.includes('ticket-service-worker-v161.js'))
         .map((registration) => registration.unregister()),
     );
 
     if ('caches' in window) {
       const cacheKeys = await caches.keys();
       await Promise.all(cacheKeys
-        .filter((key) => key === 'pontoscan-v1' || (key.startsWith('ticket-shell-') && key !== 'ticket-shell-v160'))
+        .filter((key) => key === 'pontoscan-v1' || (key.startsWith('ticket-shell-') && key !== 'ticket-shell-v161'))
         .map((key) => caches.delete(key)));
     }
 
-    await navigator.serviceWorker.register('./ticket-service-worker-v160.js', {
+    await navigator.serviceWorker.register('./ticket-service-worker-v161.js', {
       scope: './',
       updateViaCache: 'none',
     });

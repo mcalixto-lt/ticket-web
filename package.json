@@ -1,6 +1,6 @@
 {
   "name": "ticket-web",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "private": true,
   "type": "module",
   "description": "Ticket. — painel web mobile-first com câmera automática, seletor de horário, navegação interna, marca d’água e Google Drive.",

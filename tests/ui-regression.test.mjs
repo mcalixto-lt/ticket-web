@@ -67,9 +67,9 @@ test('marca principal usa SVG incorporado e favicons públicos absolutos', async
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(main, /<svg class="brand-icon"/);
   assert.doesNotMatch(main, /<img src="\.\/icons\/favicon\.svg"/);
-  assert.match(html, /href="\/favicon-v160\.ico"/);
-  assert.match(html, /href="\/apple-touch-icon-v160\.png"/);
-  assert.match(html, /href="\/manifest-v160\.webmanifest"/);
+  assert.match(html, /href="\/favicon-v161\.ico"/);
+  assert.match(html, /href="\/apple-touch-icon-v161\.png"/);
+  assert.match(html, /href="\/manifest-v161\.webmanifest"/);
 });
 
 
@@ -143,7 +143,7 @@ test('configurações possuem ciclo mensal e relatório por período', () => {
 
 test('captura usa seletor nativo de horário em vez de textarea', () => {
   assert.match(mainSource, /class="confirmed-time-input" type="time"/);
-  assert.match(mainSource, /id="addConfirmedTimeButton"/);
+  assert.doesNotMatch(mainSource, /id="addConfirmedTimeButton"/);
   assert.doesNotMatch(mainSource, /id="confirmedTimesField"/);
 });
 
@@ -172,8 +172,21 @@ test('registro de ambiente recebe marca d’água e horário do servidor', async
   assert.match(mainSource, /watermarkApplied: captureType === 'environment'/);
 });
 
-test('Google Drive orienta sobre usuários de teste e força seleção de conta', async () => {
+test('Google Drive orienta sobre usuário de teste e força seleção de conta', async () => {
   const googleSource = await readFile(new URL('../src/core/cloud/google-drive.js', import.meta.url), 'utf8');
   assert.match(mainSource, /Erro 403: access_denied/);
   assert.match(googleSource, /select_account consent/);
+});
+
+
+test('troca de tema não reconstrói o shell nem zera os registros exibidos', () => {
+  const toggleBlock = mainSource.match(/function toggleTheme\(\) \{([\s\S]*?)\n\}/)?.[1] || '';
+  assert.doesNotMatch(toggleBlock, /renderShell\(\)/);
+  assert.match(mainSource, /function updateThemeControls/);
+});
+
+test('captura de comprovante usa apenas um seletor de horário', () => {
+  assert.doesNotMatch(mainSource, /Adicionar outro horário/);
+  assert.doesNotMatch(mainSource, /addConfirmedTimeButton/);
+  assert.match(mainSource, /single-time-row/);
 });

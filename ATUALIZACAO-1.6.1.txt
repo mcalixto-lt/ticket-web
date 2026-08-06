@@ -1,0 +1,8 @@
+TICKET. WEB 1.6.1
+
+- Corrigida a troca de tema que reconstruía o painel e mostrava temporariamente valores zerados.
+- Removido “Adicionar outro horário”; cada comprovante registra um único horário.
+- Melhorado o diagnóstico do Google Drive para Erro 403 access_denied.
+- PWA/cache atualizados para v161.
+
+IMPORTANTE: o Erro 403 da tela do Google exige adicionar o e-mail usado à lista de Usuários de teste ou publicar o app em produção.

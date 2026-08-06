@@ -941,3 +941,7 @@ html[data-theme="dark"] .confirmed-time-row .remove-confirmed-time {
   color: #ff9d9d;
   background: var(--surface-soft);
 }
+
+/* Ticket. 1.6.1 — correções de tema e seletor único de horário */
+.single-time-row { grid-template-columns: minmax(0, 1fr); }
+.single-time-row label { width: 100%; }

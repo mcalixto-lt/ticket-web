@@ -34,7 +34,10 @@ async function requestToken(clientId) {
   return new Promise((resolve, reject) => {
     tokenClient.callback = (response) => {
       if (response.error) {
-        reject(new Error(response.error_description || 'A autorização do Google Drive foi cancelada.'));
+        const message = response.error === 'access_denied'
+          ? 'Acesso negado pelo Google. O aplicativo está em modo de teste e a conta escolhida precisa ser adicionada em Google Auth Platform → Público-alvo → Usuários de teste.'
+          : response.error_description || 'A autorização do Google Drive foi cancelada.';
+        reject(new Error(message));
         return;
       }
       accessToken = response.access_token;

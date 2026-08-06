@@ -96,3 +96,8 @@ A versão 1.5.2 adiciona saldo anterior com histórico e período de fechamento 
 ## Atualização 1.6.0
 
 A versão 1.6.0 adiciona seletor nativo de horário, câmera automática, botão de tema no cabeçalho mobile, navegação pelo botão Voltar do Android, marca d’água com horário obtido pela internet e diagnóstico do Google Drive. Consulte `ATUALIZACAO-1.6.0.txt`.
+
+
+## Atualização 1.6.1
+
+Corrige a atualização visual do tema sem recarregar o painel, utiliza um único seletor de horário por comprovante e adiciona diagnóstico objetivo para o Erro 403 do Google Drive. Consulte `ATUALIZACAO-1.6.1.txt` e `CORRIGIR-GOOGLE-DRIVE-403.md`.
