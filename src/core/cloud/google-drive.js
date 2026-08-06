@@ -41,8 +41,16 @@ async function requestToken(clientId) {
       expiresAt = Date.now() + Math.max(60, Number(response.expires_in || 3600) - 60) * 1000;
       resolve(accessToken);
     };
-    tokenClient.error_callback = () => reject(new Error('Não foi possível abrir a autorização do Google Drive.'));
-    tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
+    tokenClient.error_callback = (error) => {
+      const type = error?.type || 'unknown';
+      const message = type === 'popup_closed'
+        ? 'A autorização do Google foi fechada. Se o app estiver em teste, use uma conta cadastrada como Usuário de teste no Google Cloud.'
+        : type === 'popup_failed_to_open'
+          ? 'O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente novamente.'
+          : 'Não foi possível abrir a autorização do Google Drive.';
+      reject(new Error(message));
+    };
+    tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'select_account consent' });
   });
 }
 

@@ -71,7 +71,7 @@ import {
   registerAccount,
   signOutAccount,
 } from './core/auth.js';
-import { analyzeImageQuality, makeHighContrastImage, makeThumbnail, rotateImage } from './core/image-processing.js';
+import { addTimestampWatermark, analyzeImageQuality, makeHighContrastImage, makeThumbnail, rotateImage } from './core/image-processing.js';
 import { uploadEvidenceToCloud } from './core/cloud/cloud-manager.js';
 import { connectGoogleDrive, disconnectGoogleDrive } from './core/cloud/google-drive.js';
 import { connectOneDrive, disconnectOneDrive } from './core/cloud/onedrive.js';
@@ -102,6 +102,7 @@ const state = {
   captureMode: 'receipt',
   captureDate: '',
   captureTime: '',
+  environmentTimestamp: null,
   imageQuality: null,
   ocrResult: null,
   cameraStream: null,
@@ -129,6 +130,7 @@ function effectiveMicrosoftTenantId() {
 let dashboardClockTimer = null;
 let authGreetingTimer = null;
 let sessionActivityTrackingBound = false;
+let browserHistoryBound = false;
 let lastSessionTouchAt = 0;
 
 function displayFirstName(fullName = '') {
@@ -228,7 +230,7 @@ function bindPersistentSessionActivity() {
 
 const viewTitles = {
   dashboard: ['Painel', 'Resumo da sua jornada'],
-  scan: ['Registrar ponto', 'Escaneie o comprovante pela câmera'],
+  scan: ['Registrar ponto', 'Capture o comprovante pela câmera'],
   history: ['Histórico diário', 'Registros imutáveis e comprovantes'],
   calendar: ['Calendário', 'Visualização mensal da jornada'],
   reports: ['Relatórios', 'Fechamento e saldo mensal'],
@@ -437,7 +439,10 @@ function renderShell() {
     <main class="main-area">
       <header class="mobile-header">
         ${logoMarkup({ compact: true })}
-        <button id="mobileMenuButton" class="icon-button" aria-label="Abrir menu">${icon('menu', 23)}</button>
+        <div class="mobile-header-actions">
+          <button id="mobileMenuButton" class="icon-button" aria-label="Abrir menu">${icon('menu', 23)}</button>
+          <button id="mobileHeaderThemeButton" class="icon-button mobile-header-theme" title="Alternar modo claro/escuro" aria-label="Alternar modo claro ou escuro">${icon(state.theme === 'dark' ? 'sun' : 'moon', 20)}</button>
+        </div>
       </header>
       <header class="page-topbar">
         <div><h1 id="pageTitle">Painel</h1><p id="pageSubtitle">Resumo da sua jornada</p></div>
@@ -502,7 +507,7 @@ function renderShell() {
   renderClosingPeriodSettings();
   renderScheduleEditor();
   renderStorageSettings();
-  navigate(state.view, { stopCamera: false });
+  navigate(state.view, { stopCamera: false, historyMode: 'replace', autoCamera: false });
 }
 
 function dashboardViewTemplate() {
@@ -542,7 +547,7 @@ function scanViewTemplate() {
   const isEnvironment = state.captureMode === 'environment';
   return `<section class="view" data-view="scan">
     <div class="section-intro"><div><span class="eyebrow">Registro por fotografia</span><h2>${isEnvironment ? 'Registrar ambiente' : 'Capturar comprovante'}</h2><p>${isEnvironment
-      ? 'Fotografe o ambiente da empresa. A data e a hora serão preenchidas automaticamente pelo dispositivo.'
+      ? 'Fotografe o ambiente da empresa. A data e a hora serão obtidas automaticamente pela internet e gravadas na fotografia.'
       : 'Fotografe o comprovante inteiro e informe manualmente a DATA e a HORA utilizadas no cálculo.'}</p></div></div>
     <div class="scan-layout">
       <article class="scanner-card">
@@ -578,13 +583,18 @@ function scanViewTemplate() {
       </article>
       <article id="reviewCard" class="review-card hidden">
         <div class="panel-heading"><div><span class="eyebrow">Informações do registro</span><h3>${isEnvironment ? 'Confirme o registro do ambiente' : 'Informação utilizada no cálculo'}</h3><p>${isEnvironment
-          ? 'A data e a hora foram obtidas do dispositivo. Este registro comprova presença, mas não altera as batidas nem o cálculo da jornada.'
+          ? 'A data e a hora foram obtidas do servidor do Ticket. e inseridas como marca d’água. Este registro comprova presença, mas não altera as batidas nem o cálculo da jornada.'
           : 'Informe manualmente a data e o horário exibidos no comprovante.'}</p></div></div>
         <form id="reviewForm" class="review-grid review-grid-single">
           <div class="review-column editable-column">
             <div class="column-title">${icon(isEnvironment ? 'lock' : 'edit', 18)} <strong>Informação utilizada no cálculo</strong></div>
             <label><span>Data</span><input id="confirmedDateField" type="date" required ${isEnvironment ? 'readonly' : ''} /></label>
-            <label><span>Horário(s) — um por linha</span><textarea id="confirmedTimesField" rows="3" required ${isEnvironment ? 'readonly' : ''}></textarea></label>
+            <div class="time-selector-field">
+              <span class="field-caption">Horário(s)</span>
+              <div id="confirmedTimesList" class="confirmed-times-list"></div>
+              ${isEnvironment ? '' : `<button id="addConfirmedTimeButton" class="button button-outline add-time-button" type="button">${icon('clock', 17)} Adicionar outro horário</button>`}
+              <small class="time-selector-help">${isEnvironment ? 'Horário verificado automaticamente pela internet.' : 'Toque no campo para selecionar a hora no relógio do celular.'}</small>
+            </div>
             <div><span class="field-caption">Classificação automática</span><div id="classificationPreview" class="classification-preview"></div></div>
             ${isEnvironment ? `<div class="inline-alert environment-alert">${icon('info', 18)} <span>Este registro será salvo como evidência auxiliar de presença. Ele não será usado como batida e não modificará as horas trabalhadas.</span></div>` : ''}
             <label class="check-row compact"><input id="recordLockConfirm" type="checkbox" required /><span>Revisei os dados e autorizo o bloqueio definitivo deste registro.</span></label>
@@ -681,6 +691,7 @@ function storageViewTemplate() {
         <div id="googleConfig" class="provider-config">
           <div class="integration-state ${googleConfigured ? 'ready' : 'pending'}">${icon(googleConfigured ? 'check' : 'alert', 19)}<span>${googleConfigured ? 'Integração Google preparada para autorização.' : 'Integração Google ainda não configurada nesta instalação.'}</span></div>
           <button id="connectGoogleButton" class="button button-outline" ${googleConfigured ? '' : 'disabled'}>${googleConfigured ? 'Conectar minha conta Google Drive' : 'Configuração do administrador necessária'}</button>
+          <div class="google-test-note">${icon('info', 17)}<span>Se o Google mostrar “Erro 403: access_denied”, a conta usada precisa estar em <strong>Google Auth Platform → Público-alvo → Usuários de teste</strong>, ou o app precisa ser publicado em produção.</span></div>
         </div>
         <div id="microsoftConfig" class="provider-config">
           <div class="integration-state ${microsoftConfigured ? 'ready' : 'pending'}">${icon(microsoftConfigured ? 'check' : 'alert', 19)}<span>${microsoftConfigured ? 'Integração Microsoft preparada para autorização.' : 'Integração Microsoft ainda não configurada nesta instalação.'}</span></div>
@@ -711,7 +722,7 @@ function helpViewTemplate() {
     <div class="help-grid">
       <article class="help-card"><span>1</span>${icon('camera', 26)}<h3>Fotografe por inteiro</h3><p>Guarde todo o comprovante ou fotografe o ambiente quando o relógio de ponto estiver indisponível.</p></article>
       <article class="help-card"><span>2</span>${icon('image', 26)}<h3>Escolha a aparência</h3><p>Salve a fotografia em cores ou aplique alto contraste para destacar a impressão térmica.</p></article>
-      <article class="help-card"><span>3</span>${icon('edit', 26)}<h3>Informe DATA e HORA</h3><p>No comprovante, digite manualmente os dados exibidos. No registro de ambiente, o dispositivo preenche automaticamente.</p></article>
+      <article class="help-card"><span>3</span>${icon('edit', 26)}<h3>Informe DATA e HORA</h3><p>No comprovante, selecione a data e os horários pelo seletor do celular. No registro de ambiente, o Ticket. usa o horário verificado pela internet.</p></article>
       <article class="help-card"><span>4</span>${icon('lock', 26)}<h3>Confirme e bloqueie</h3><p>Depois de salvar, a interface não permite alterar o registro.</p></article>
     </div>
     <article class="panel-card help-note"><h3>Sobre os registros</h3><p>O Ticket. guarda a fotografia completa como evidência. A data e a hora digitadas no comprovante são usadas somente para classificar a batida e calcular a jornada.</p></article>
@@ -720,18 +731,19 @@ function helpViewTemplate() {
 
 function bindShellEvents() {
   document.querySelectorAll('[data-view-target]').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       if (button.dataset.viewTarget === 'scan') {
         state.captureMode = 'receipt';
-        resetScan();
+        await resetScan();
         renderScanModeCopy();
       }
-      navigate(button.dataset.viewTarget);
+      navigate(button.dataset.viewTarget, { autoCamera: button.dataset.viewTarget === 'scan' });
     });
   });
   document.querySelector('#logoutButton')?.addEventListener('click', logout);
   document.querySelector('#mobileLogoutButton')?.addEventListener('click', logout);
   document.querySelector('#themeToggleButton')?.addEventListener('click', toggleTheme);
+  document.querySelector('#mobileHeaderThemeButton')?.addEventListener('click', toggleTheme);
   document.querySelector('#mobileThemeButton')?.addEventListener('click', toggleTheme);
   document.querySelector('#mobileMenuButton')?.addEventListener('click', openMoreSheet);
   document.querySelector('#moreMenuButton')?.addEventListener('click', openMoreSheet);
@@ -754,6 +766,7 @@ function bindShellEvents() {
   bindReportEvents();
   bindSettingsEvents();
   bindStorageEvents();
+  bindBrowserNavigation();
   handleConnectivityChange();
 }
 
@@ -775,6 +788,7 @@ async function logout() {
   state.profile = null;
   state.view = 'dashboard';
   state.authMode = 'login';
+  window.history.replaceState({ ticketView: 'login', ticketDepth: 0 }, '', window.location.href);
   renderLogin();
 }
 
@@ -803,6 +817,44 @@ function toggleTheme() {
   else renderLogin();
 }
 
+function browserHistoryDepth() {
+  return Number(window.history.state?.ticketDepth || 0);
+}
+
+function syncBrowserHistory(view, mode = 'push') {
+  if (mode === 'none') return;
+  const current = window.history.state || {};
+  const payload = {
+    ...current,
+    ticketView: view,
+    ticketDepth: mode === 'replace' ? Number(current.ticketDepth || 0) : Number(current.ticketDepth || 0) + 1,
+  };
+  if (mode === 'replace' || !current.ticketView) window.history.replaceState(payload, '', window.location.href);
+  else if (current.ticketView !== view) window.history.pushState(payload, '', window.location.href);
+}
+
+function bindBrowserNavigation() {
+  if (browserHistoryBound) return;
+  browserHistoryBound = true;
+  window.addEventListener('popstate', (event) => {
+    if (!state.profile) return;
+    const target = event.state?.ticketView;
+    if (target && viewTitles[target]) {
+      navigate(target, { historyMode: 'none', autoCamera: false });
+      return;
+    }
+    if (state.view !== 'dashboard') navigate('dashboard', { historyMode: 'replace', autoCamera: false });
+  });
+}
+
+function goBackInApp() {
+  if (browserHistoryDepth() > 0) {
+    window.history.back();
+    return;
+  }
+  navigate('dashboard', { historyMode: 'replace', autoCamera: false });
+}
+
 function navigate(view, options = {}) {
   if (!viewTitles[view]) view = 'dashboard';
   if (options.stopCamera !== false && view !== 'scan') stopCamera();
@@ -810,7 +862,7 @@ function navigate(view, options = {}) {
   document.querySelectorAll('.view').forEach((element) => element.classList.toggle('active', element.dataset.view === view));
   document.querySelectorAll('[data-view-target]').forEach((button) => button.classList.toggle('active', button.dataset.viewTarget === view));
   const [title, subtitle] = view === 'scan' && state.captureMode === 'environment'
-    ? ['Registrar ambiente', 'Fotografia de presença com horário do dispositivo']
+    ? ['Registrar ambiente', 'Fotografia de presença com horário verificado pela internet']
     : viewTitles[view];
   const titleElement = document.querySelector('#pageTitle');
   const subtitleElement = document.querySelector('#pageSubtitle');
@@ -822,6 +874,13 @@ function navigate(view, options = {}) {
   if (view === 'history') renderHistory();
   if (view === 'reports') renderReports();
   if (view === 'storage') renderStorageSettings();
+  syncBrowserHistory(view, options.historyMode || 'push');
+
+  if (view === 'scan' && state.captureMode === 'receipt' && options.autoCamera !== false && !state.selectedImage && !state.cameraStream) {
+    window.setTimeout(() => {
+      if (state.view === 'scan' && state.captureMode === 'receipt' && !state.selectedImage && !state.cameraStream) openCamera({ automatic: true });
+    }, 80);
+  }
 }
 
 function handleConnectivityChange() {
@@ -947,17 +1006,17 @@ function renderDashboard() {
 }
 
 function bindDashboardEvents() {
-  document.querySelector('#registerReceiptButton')?.addEventListener('click', () => {
+  document.querySelector('#registerReceiptButton')?.addEventListener('click', async () => {
     state.captureMode = 'receipt';
-    resetScan();
+    await resetScan();
     renderScanModeCopy();
-    navigate('scan', { stopCamera: false });
+    navigate('scan', { stopCamera: false, autoCamera: true });
   });
-  document.querySelector('#registerEnvironmentButton')?.addEventListener('click', () => {
+  document.querySelector('#registerEnvironmentButton')?.addEventListener('click', async () => {
     state.captureMode = 'environment';
-    resetScan();
+    await resetScan();
     renderScanModeCopy();
-    navigate('scan', { stopCamera: false });
+    navigate('scan', { stopCamera: false, autoCamera: false });
   });
 }
 
@@ -1559,8 +1618,8 @@ async function retryPendingSync() {
 }
 
 function bindScanEvents() {
-  document.querySelector('#scanBackButton')?.addEventListener('click', () => navigate('dashboard'));
-  document.querySelector('#openCameraButton')?.addEventListener('click', openCamera);
+  document.querySelector('#scanBackButton')?.addEventListener('click', goBackInApp);
+  document.querySelector('#openCameraButton')?.addEventListener('click', () => openCamera({ automatic: false }));
   document.querySelector('#captureButton')?.addEventListener('click', captureOrOpenCamera);
   document.querySelector('#chooseImageButton')?.addEventListener('click', () => document.querySelector('#imageFileInput').click());
   document.querySelector('#imageFileInput')?.addEventListener('change', async (event) => {
@@ -1570,8 +1629,8 @@ function bindScanEvents() {
   });
   document.querySelector('#rotateImageButton')?.addEventListener('click', rotateSelectedImage);
   document.querySelectorAll('[data-image-style]').forEach((button) => button.addEventListener('click', () => applyImageStyle(button.dataset.imageStyle)));
-  document.querySelector('#continueRegistrationButton')?.addEventListener('click', () => {
-    prepareManualReview();
+  document.querySelector('#continueRegistrationButton')?.addEventListener('click', async () => {
+    await prepareManualReview();
     document.querySelector('#reviewCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   document.querySelector('#clearScanButton')?.addEventListener('click', resetScan);
@@ -1581,10 +1640,10 @@ function bindScanEvents() {
   });
   document.querySelector('#reviewForm')?.addEventListener('submit', saveConfirmedRecord);
   document.querySelector('#confirmedDateField')?.addEventListener('input', updateReviewClassification);
-  document.querySelector('#confirmedTimesField')?.addEventListener('input', updateReviewClassification);
+  document.querySelector('#addConfirmedTimeButton')?.addEventListener('click', addConfirmedTimeInput);
 }
 
-async function openCamera() {
+async function openCamera({ automatic = false } = {}) {
   try {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('A câmera direta não está disponível. Use “Escolher imagem”.');
     stopCamera();
@@ -1605,7 +1664,8 @@ async function openCamera() {
     document.querySelector('#scanPlaceholder').classList.add('hidden');
     document.querySelector('#qualityBar').innerHTML = '<span class="quality-dot good"></span><strong>Câmera pronta</strong><small>Centralize o comprovante e toque no círculo.</small>';
   } catch (error) {
-    toast(error.message || 'Não foi possível abrir a câmera.', 'error');
+    const fallback = automatic ? 'A câmera não foi autorizada. Você ainda pode escolher uma imagem da galeria.' : 'Não foi possível abrir a câmera.';
+    toast(error.message || fallback, 'error', 6500);
   }
 }
 
@@ -1635,7 +1695,7 @@ async function captureOrOpenCamera() {
   if (blob) await setSelectedImage(blob, `ticket-${Date.now()}.jpg`);
 }
 
-async function setSelectedImage(blob, name = 'comprovante.jpg') {
+async function setSelectedImage(blob, name = 'comprovante.jpg', options = {}) {
   try {
     if (!blob.type.startsWith('image/')) throw new Error('Selecione um arquivo de imagem.');
     const hash = await hashBlob(blob);
@@ -1650,13 +1710,27 @@ async function setSelectedImage(blob, name = 'comprovante.jpg') {
     }
     if (state.selectedImageUrl) URL.revokeObjectURL(state.selectedImageUrl);
     state.sourceImage = blob;
-    state.selectedImage = blob;
     state.selectedImageName = name;
     state.imageDisplayMode = 'color';
-    const capturedNow = new Date();
-    state.captureDate = todayIso();
-    state.captureTime = `${String(capturedNow.getHours()).padStart(2, '0')}:${String(capturedNow.getMinutes()).padStart(2, '0')}`;
-    state.selectedImageUrl = URL.createObjectURL(blob);
+
+    if (state.captureMode === 'environment') {
+      const timestamp = options.environmentTimestamp || await fetchInternetTimestamp();
+      state.environmentTimestamp = timestamp;
+      state.captureDate = localIsoDate(timestamp.date);
+      state.captureTime = formatCurrentTime(timestamp.date);
+      state.selectedImage = await addTimestampWatermark(blob, timestamp.date, {
+        title: 'Ticket. · Registro de ambiente',
+        subtitle: 'Data e hora verificadas pela internet',
+      });
+    } else {
+      const capturedNow = new Date();
+      state.environmentTimestamp = null;
+      state.captureDate = localIsoDate(capturedNow);
+      state.captureTime = formatCurrentTime(capturedNow);
+      state.selectedImage = blob;
+    }
+
+    state.selectedImageUrl = URL.createObjectURL(state.selectedImage);
     state.imageQuality = await analyzeImageQuality(blob);
     state.ocrResult = null;
     const image = document.querySelector('#scanPreviewImage');
@@ -1690,7 +1764,7 @@ async function rotateSelectedImage() {
   setBusy(true, 'Girando imagem…');
   try {
     const rotated = await rotateImage(state.sourceImage || state.selectedImage, 90);
-    await setSelectedImage(rotated, state.selectedImageName);
+    await setSelectedImage(rotated, state.selectedImageName, { environmentTimestamp: state.environmentTimestamp });
   } finally {
     setBusy(false);
   }
@@ -1702,9 +1776,16 @@ async function applyImageStyle(mode) {
   setBusy(true, normalized === 'contrast' ? 'Aplicando alto contraste…' : 'Restaurando cores…');
   try {
     state.imageDisplayMode = normalized;
-    state.selectedImage = normalized === 'contrast'
+    let styledImage = normalized === 'contrast'
       ? await makeHighContrastImage(state.sourceImage)
       : state.sourceImage;
+    if (state.captureMode === 'environment' && state.environmentTimestamp?.date) {
+      styledImage = await addTimestampWatermark(styledImage, state.environmentTimestamp.date, {
+        title: 'Ticket. · Registro de ambiente',
+        subtitle: 'Data e hora verificadas pela internet',
+      });
+    }
+    state.selectedImage = styledImage;
     if (state.selectedImageUrl) URL.revokeObjectURL(state.selectedImageUrl);
     state.selectedImageUrl = URL.createObjectURL(state.selectedImage);
     const image = document.querySelector('#scanPreviewImage');
@@ -1722,23 +1803,89 @@ async function applyImageStyle(mode) {
 }
 
 function currentLocalTime() {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  return formatCurrentTime(new Date());
 }
 
-function prepareManualReview() {
+function localIsoDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+async function fetchInternetTimestamp() {
+  if (!navigator.onLine) throw new Error('Conecte-se à internet para registrar o ambiente com data e hora verificadas.');
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(`${window.location.origin}/index.html?ticket_time=${Date.now()}`, {
+      method: 'HEAD',
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: controller.signal,
+    });
+    const serverDate = response.headers.get('date');
+    if (!response.ok || !serverDate) throw new Error('O servidor não forneceu uma data válida.');
+    const date = new Date(serverDate);
+    if (Number.isNaN(date.getTime())) throw new Error('A data recebida do servidor é inválida.');
+    return { date, source: 'server-http-date', verifiedAt: date.toISOString() };
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('Não foi possível confirmar o horário pela internet. Tente novamente.');
+    throw new Error('Não foi possível obter a data e a hora da internet. Verifique a conexão e tente novamente.');
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+function confirmedTimeValues() {
+  return [...document.querySelectorAll('.confirmed-time-input')]
+    .map((input) => normalizeTime(input.value))
+    .filter(Boolean);
+}
+
+function renderConfirmedTimeInputs(values = [''], { readonly = false } = {}) {
+  const target = document.querySelector('#confirmedTimesList');
+  if (!target) return;
+  const normalized = values.length ? values : [''];
+  target.innerHTML = normalized.map((value, index) => `
+    <div class="confirmed-time-row">
+      <label>
+        <span>${readonly ? 'Horário verificado' : `Horário ${index + 1}`}</span>
+        <input class="confirmed-time-input" type="time" step="60" value="${escapeHtml(value || '')}" ${readonly ? 'readonly' : ''} required />
+      </label>
+      ${!readonly && normalized.length > 1 ? `<button type="button" class="icon-button remove-confirmed-time" data-time-index="${index}" title="Remover horário">${icon('close', 17)}</button>` : ''}
+    </div>`).join('');
+  target.querySelectorAll('.confirmed-time-input').forEach((input) => input.addEventListener('input', updateReviewClassification));
+  target.querySelectorAll('.remove-confirmed-time').forEach((button) => button.addEventListener('click', () => {
+    const current = [...document.querySelectorAll('.confirmed-time-input')].map((input) => input.value);
+    current.splice(Number(button.dataset.timeIndex), 1);
+    renderConfirmedTimeInputs(current.length ? current : ['']);
+    updateReviewClassification();
+  }));
+}
+
+function addConfirmedTimeInput() {
+  const current = [...document.querySelectorAll('.confirmed-time-input')].map((input) => input.value);
+  if (current.length >= 4) {
+    toast('É possível selecionar até quatro horários por comprovante.', 'info');
+    return;
+  }
+  renderConfirmedTimeInputs([...current, '']);
+  document.querySelectorAll('.confirmed-time-input').item(current.length)?.focus();
+}
+
+async function prepareManualReview() {
   if (!state.selectedImage) {
     toast('Selecione ou fotografe uma imagem primeiro.', 'info');
     return;
   }
   const isEnvironment = state.captureMode === 'environment';
   const dateField = document.querySelector('#confirmedDateField');
-  const timeField = document.querySelector('#confirmedTimesField');
   if (dateField) dateField.value = isEnvironment ? (state.captureDate || todayIso()) : (dateField.value || todayIso());
-  if (timeField) timeField.value = isEnvironment ? (state.captureTime || currentLocalTime()) : timeField.value;
+  renderConfirmedTimeInputs(isEnvironment ? [state.captureTime || currentLocalTime()] : [''], { readonly: isEnvironment });
   document.querySelector('#recordLockConfirm').checked = false;
   document.querySelector('#reviewCard').classList.remove('hidden');
-  updateReviewClassification();
+  await updateReviewClassification();
 }
 
 function renderScanModeCopy() {
@@ -1751,7 +1898,7 @@ function renderScanModeCopy() {
 }
 
 function parseConfirmedTimes() {
-  return [...new Set(document.querySelector('#confirmedTimesField').value.split(/[\n,;]+/).map(normalizeTime).filter(Boolean))]
+  return [...new Set(confirmedTimeValues())]
     .sort((a, b) => parseTimeToMinutes(a) - parseTimeToMinutes(b));
 }
 
@@ -1829,7 +1976,10 @@ async function saveConfirmedRecord(event) {
       confirmedTimes,
       captureType,
       imageDisplayMode: state.imageDisplayMode,
-      source: captureType === 'environment' ? 'device-timestamp' : 'manual-from-photo',
+      source: captureType === 'environment' ? 'internet-server-timestamp' : 'manual-from-photo',
+      timestampSource: captureType === 'environment' ? state.environmentTimestamp?.source || 'server-http-date' : null,
+      timestampVerifiedAt: captureType === 'environment' ? state.environmentTimestamp?.verifiedAt || now : null,
+      watermarkApplied: captureType === 'environment',
       quality: state.imageQuality,
       manualCorrection: false,
       createdAt: now,
@@ -1935,6 +2085,7 @@ async function resetScan() {
   state.imageDisplayMode = 'color';
   state.captureDate = '';
   state.captureTime = '';
+  state.environmentTimestamp = null;
   const image = document.querySelector('#scanPreviewImage');
   if (image) {
     image.removeAttribute('src');
@@ -2022,18 +2173,18 @@ async function registerTicketServiceWorker() {
 
     await Promise.all(
       registrations
-        .filter((registration) => !registration.active?.scriptURL.includes('ticket-service-worker-v152.js'))
+        .filter((registration) => !registration.active?.scriptURL.includes('ticket-service-worker-v160.js'))
         .map((registration) => registration.unregister()),
     );
 
     if ('caches' in window) {
       const cacheKeys = await caches.keys();
       await Promise.all(cacheKeys
-        .filter((key) => key === 'pontoscan-v1' || (key.startsWith('ticket-shell-') && key !== 'ticket-shell-v152'))
+        .filter((key) => key === 'pontoscan-v1' || (key.startsWith('ticket-shell-') && key !== 'ticket-shell-v160'))
         .map((key) => caches.delete(key)));
     }
 
-    await navigator.serviceWorker.register('./ticket-service-worker-v152.js', {
+    await navigator.serviceWorker.register('./ticket-service-worker-v160.js', {
       scope: './',
       updateViaCache: 'none',
     });

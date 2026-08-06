@@ -72,3 +72,16 @@ As imagens são organizadas em `Ticket./ANO/MÊS`.
 - **Popup bloqueado:** permita popups para o endereço do Ticket.
 - **Funciona no computador, mas não no celular:** publique em HTTPS e cadastre a URL publicada nos dois provedores.
 - **Imagem ficou pendente:** conecte a conta e use **Tentar sincronizar agora**.
+
+
+## Erro 403: access_denied no Google
+
+Quando a tela informa que o aplicativo está em fase de testes e só pode ser acessado por testadores aprovados, o Client ID já foi reconhecido. Para liberar a conta usada no celular:
+
+1. Abra **Google Auth Platform** no mesmo projeto do Client ID.
+2. Entre em **Público-alvo**.
+3. Em **Usuários de teste**, adicione exatamente a Conta Google usada no celular.
+4. Salve, aguarde alguns minutos e tente novamente.
+5. Como alternativa, altere o status do aplicativo para Produção e cumpra as exigências de verificação aplicáveis.
+
+O código do Ticket. não pode ignorar a lista de usuários de teste definida pelo Google.

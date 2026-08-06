@@ -597,3 +597,65 @@ export async function makeHighContrastImage(blob, maxDimension = 2400) {
     );
   });
 }
+
+
+export async function addTimestampWatermark(blob, dateInput, {
+  title = 'Ticket. · Registro de ambiente',
+  subtitle = 'Data e hora verificadas pela internet',
+} = {}) {
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (Number.isNaN(date.getTime())) throw new Error('Data inválida para aplicar a marca d’água.');
+
+  const drawable = await loadDrawable(blob);
+  const width = drawable.width || drawable.naturalWidth;
+  const height = drawable.height || drawable.naturalHeight;
+  const canvas = createCanvas(width, height);
+  const context = canvas.getContext('2d', { alpha: false });
+  context.drawImage(drawable, 0, 0, width, height);
+  drawable.close?.();
+
+  const formatter = new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+  });
+  const dateTimeLabel = formatter.format(date);
+  const zoneLabel = Intl.DateTimeFormat('pt-BR', { timeZoneName: 'short' })
+    .formatToParts(date)
+    .find((part) => part.type === 'timeZoneName')?.value || '';
+
+  const padding = Math.max(20, Math.round(width * 0.026));
+  const titleSize = Math.max(24, Math.min(64, Math.round(width * 0.038)));
+  const metaSize = Math.max(18, Math.min(46, Math.round(width * 0.027)));
+  const bandHeight = Math.max(128, Math.round(titleSize + metaSize * 2 + padding * 2.2));
+  const bandY = Math.max(0, height - bandHeight);
+
+  const gradient = context.createLinearGradient(0, bandY, width, height);
+  gradient.addColorStop(0, 'rgba(3, 20, 45, 0.91)');
+  gradient.addColorStop(1, 'rgba(8, 35, 72, 0.84)');
+  context.fillStyle = gradient;
+  context.fillRect(0, bandY, width, bandHeight);
+
+  context.fillStyle = '#f3c650';
+  context.fillRect(0, bandY, Math.max(8, Math.round(width * 0.008)), bandHeight);
+
+  context.textBaseline = 'top';
+  context.font = `700 ${titleSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  context.fillStyle = '#ffffff';
+  context.fillText(title, padding, bandY + padding, width - padding * 2);
+
+  context.font = `700 ${metaSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  context.fillStyle = '#f3c650';
+  context.fillText(`${dateTimeLabel}${zoneLabel ? ` · ${zoneLabel}` : ''}`, padding, bandY + padding + titleSize + Math.round(metaSize * 0.18), width - padding * 2);
+
+  context.font = `500 ${Math.max(16, Math.round(metaSize * 0.78))}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  context.fillStyle = 'rgba(255,255,255,.88)';
+  context.fillText(subtitle, padding, bandY + padding + titleSize + metaSize * 1.25, width - padding * 2);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (result) => (result ? resolve(result) : reject(new Error('Falha ao aplicar a marca d’água.'))),
+      'image/jpeg',
+      0.94,
+    );
+  });
+}

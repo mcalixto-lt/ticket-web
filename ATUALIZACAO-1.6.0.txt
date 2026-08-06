@@ -1,0 +1,16 @@
+TICKET. WEB 1.6.0
+
+ALTERAÇÕES:
+- Seletor nativo de horário no celular, com suporte a até quatro horários.
+- Câmera iniciada automaticamente ao abrir Capturar comprovante.
+- Diagnóstico melhorado do Google Drive e seleção explícita da Conta Google.
+- Botão de modo claro/escuro visível abaixo do menu no cabeçalho mobile.
+- Navegação integrada ao botão Voltar do Android/navegador.
+- Marca d'água automática em Registro de ambiente com data e hora obtidas do servidor do Ticket.
+- PWA e cache atualizados para v160.
+
+IMPORTANTE SOBRE GOOGLE DRIVE:
+O erro 403 access_denied da tela do Google não é causado pelo código do Ticket.
+Se o app estiver em modo Teste, adicione a Conta Google usada no celular em:
+Google Auth Platform > Público-alvo > Usuários de teste.
+Como alternativa, publique o app em Produção e conclua as exigências do Google aplicáveis.

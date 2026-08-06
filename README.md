@@ -34,16 +34,17 @@ Para acessar fora da rede local, instalar como PWA e usar autenticação de Driv
 
 ## Registro de comprovante
 
-1. Fotografe ou selecione o comprovante completo.
-2. Escolha salvar a imagem em cores ou em alto contraste.
-3. Informe manualmente a DATA e a HORA exibidas no comprovante.
-4. Confirme o bloqueio do registro.
+1. Ao abrir **Capturar comprovante**, o Ticket. solicita acesso e inicia a câmera automaticamente.
+2. Fotografe ou selecione o comprovante completo.
+3. Escolha salvar a imagem em cores ou em alto contraste.
+4. Selecione a DATA e a HORA usando os controles nativos do celular.
+5. Confirme o bloqueio do registro.
 
 O sistema não tenta substituir os dados digitados por uma leitura automática. A fotografia completa fica vinculada à batida como evidência.
 
 ## Registrar ambiente
 
-O botão **Registrar ambiente** permite fotografar o local de trabalho quando o relógio de ponto estiver indisponível. A data e a hora são preenchidas pelo dispositivo, mas a fotografia é salva somente como evidência auxiliar: ela não cria uma batida e não altera as horas trabalhadas.
+O botão **Registrar ambiente** permite fotografar o local de trabalho quando o relógio de ponto estiver indisponível. O Ticket. consulta a data e a hora do servidor pela internet e aplica uma marca d’água diretamente na fotografia. A imagem continua sendo evidência auxiliar: ela não cria uma batida e não altera as horas trabalhadas.
 
 ## Visão geral
 
@@ -85,8 +86,13 @@ npm run build
 - `src/core/storage.js`: perfis, IndexedDB, evidências e gravação atômica.
 - `src/core/cloud/google-drive.js`: autorização e envio ao Google Drive.
 - `src/core/cloud/onedrive.js`: autorização e envio ao Microsoft OneDrive.
-- `public/ticket-service-worker-v143.js`: PWA publicada.
+- `public/ticket-service-worker-v160.js`: PWA publicada.
 
 ## Atualização 1.5.2
 
 A versão 1.5.2 adiciona saldo anterior com histórico e período de fechamento mensal configurável. Os registros já confirmados permanecem imutáveis. Consulte `ATUALIZACAO-1.5.2.txt`.
+
+
+## Atualização 1.6.0
+
+A versão 1.6.0 adiciona seletor nativo de horário, câmera automática, botão de tema no cabeçalho mobile, navegação pelo botão Voltar do Android, marca d’água com horário obtido pela internet e diagnóstico do Google Drive. Consulte `ATUALIZACAO-1.6.0.txt`.
