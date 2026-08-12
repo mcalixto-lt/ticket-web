@@ -1,0 +1,48 @@
+name: Aplicar atualização Registrar Ausência
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/absence-update.patch.gz.b64
+
+permissions:
+  contents: write
+
+jobs:
+  apply-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preparar patch da atualização
+        shell: bash
+        run: |
+          base64 -d scripts/absence-update.patch.gz.b64 | gzip -d > /tmp/absence-update.patch
+          git apply --check /tmp/absence-update.patch
+          git apply /tmp/absence-update.patch
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Executar testes
+        run: npm test
+
+      - name: Compilar aplicação
+        run: npm run build
+
+      - name: Publicar atualização no Git
+        shell: bash
+        run: |
+          git config user.name "Ticket Update Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add package.json package-lock.json src tests public/ticket-service-worker-v170.js ATUALIZACAO-1.7.0.txt
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração pendente."
+            exit 0
+          fi
+          git commit -m "Adicionar registro de ausência"
+          git push origin HEAD:main
