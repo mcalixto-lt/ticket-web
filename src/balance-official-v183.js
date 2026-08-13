@@ -3,34 +3,38 @@ import { loadProfile, setStorageNamespace, loadSchedule, loadBalanceSettings, sa
 
 const REFERENCE_DATE = '2026-08-12';
 const BASE_MINUTES = 690;
+const RELOAD_MARK = 'ticket.official-balance-20260812.loaded';
 
 function applyOfficialBalance() {
   const profile = loadProfile();
   if (!profile) return false;
   setStorageNamespace(profile.id || profile.cpfHash?.slice(0, 24) || 'default');
   const current = loadBalanceSettings();
-  const history = Array.isArray(current.history)
-    ? current.history.filter((item) => item?.id !== 'official-20260812')
-    : [];
-  saveBalanceSettings({
-    ...current,
-    minutes: BASE_MINUTES,
-    type: 'positive',
-    referenceDate: REFERENCE_DATE,
-    note: 'Saldo oficial do banco de horas da empresa: +11h30 até 12/08/2026.',
-    history: [
-      ...history,
-      {
-        id: 'official-20260812',
-        minutes: BASE_MINUTES,
-        type: 'positive',
-        referenceDate: REFERENCE_DATE,
-        note: 'Saldo oficial da empresa: +11h30 até 12/08/2026.',
-        updatedAt: new Date().toISOString(),
-      },
-    ],
-    updatedAt: new Date().toISOString(),
-  });
+  const alreadyCorrect = Number(current.minutes) === BASE_MINUTES && current.referenceDate === REFERENCE_DATE;
+  if (!alreadyCorrect) {
+    const history = Array.isArray(current.history)
+      ? current.history.filter((item) => item?.id !== 'official-20260812')
+      : [];
+    saveBalanceSettings({
+      ...current,
+      minutes: BASE_MINUTES,
+      type: 'positive',
+      referenceDate: REFERENCE_DATE,
+      note: 'Saldo oficial do banco de horas da empresa: +11h30 até 12/08/2026.',
+      history: [
+        ...history,
+        {
+          id: 'official-20260812',
+          minutes: BASE_MINUTES,
+          type: 'positive',
+          referenceDate: REFERENCE_DATE,
+          note: 'Saldo oficial da empresa: +11h30 até 12/08/2026.',
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      updatedAt: new Date().toISOString(),
+    });
+  }
   return true;
 }
 
@@ -38,10 +42,8 @@ async function officialTotal() {
   const profile = loadProfile();
   if (!profile) return BASE_MINUTES;
   setStorageNamespace(profile.id || profile.cpfHash?.slice(0, 24) || 'default');
-  const [records, schedule] = await Promise.all([
-    listRecords().catch(() => []),
-    Promise.resolve(loadSchedule(DEFAULT_SCHEDULE)),
-  ]);
+  const records = await listRecords().catch(() => []);
+  const schedule = loadSchedule(DEFAULT_SCHEDULE);
   return BASE_MINUTES + accumulatedTicketBalance(records, schedule, {
     afterDate: REFERENCE_DATE,
     throughDate: todayIso(),
@@ -53,21 +55,38 @@ function normalize(text = '') {
 }
 
 async function refreshVisibleBalance() {
+  applyOfficialBalance();
   const total = await officialTotal().catch(() => BASE_MINUTES);
   const formatted = formatDuration(total, { signed: true, suffix: true });
   const elements = [...document.querySelectorAll('div,section,article')];
-  const card = elements
+  const cards = elements
     .filter((el) => normalize(el.textContent).includes('saldo do mes'))
-    .sort((a, b) => a.childElementCount - b.childElementCount)[0];
-  if (!card) return;
-  const values = [...card.querySelectorAll('strong,b,span,div,p')]
-    .filter((el) => /^[+\-]?\d{1,4}(?::\d{2}|h\d{2})$/.test((el.textContent || '').trim()));
-  const target = values[0] || card.querySelector('[class*="value"]');
-  if (target) target.textContent = formatted;
+    .sort((a, b) => a.childElementCount - b.childElementCount);
+  for (const card of cards.slice(0, 2)) {
+    const values = [...card.querySelectorAll('strong,b,span,div,p')]
+      .filter((el) => /^[+\-]?\d{1,4}(?::\d{2}|h\d{2})$/.test((el.textContent || '').trim()));
+    const target = values[0] || card.querySelector('[class*="value"]');
+    if (target) target.textContent = formatted;
+  }
 }
 
+const hadProfileAtBoot = Boolean(loadProfile());
 applyOfficialBalance();
 window.__ticketOfficialBalance = { referenceDate: REFERENCE_DATE, minutes: BASE_MINUTES };
+
+if (!hadProfileAtBoot) {
+  let attempts = 0;
+  const timer = setInterval(() => {
+    attempts += 1;
+    if (applyOfficialBalance()) {
+      clearInterval(timer);
+      if (sessionStorage.getItem(RELOAD_MARK) !== '1') {
+        sessionStorage.setItem(RELOAD_MARK, '1');
+        location.reload();
+      }
+    } else if (attempts > 120) clearInterval(timer);
+  }, 500);
+}
 
 const observer = new MutationObserver(() => {
   clearTimeout(window.__ticketBalanceRefresh);
