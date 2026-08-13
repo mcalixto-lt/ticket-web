@@ -1,0 +1,5 @@
+1. Não apague absence.js nem absence.css.
+2. Envie os dois arquivos da pasta src deste pacote para src/ no GitHub.
+3. No index.html, cole as duas linhas de TRECHO_PARA_INDEX.txt depois das referências atuais de absence.css e absence.js.
+4. Commit no main e aguarde o Render.
+5. NÃO limpe dados/cache/armazenamento do site: os comprovantes antigos ficam no IndexedDB original.
