@@ -1,0 +1,15 @@
+TICKET. - CORRECAO MANUAL V178
+
+Copie os arquivos preservando as pastas:
+- src/absence-stability-v178.js
+- src/absence-stability-v178.css
+- public/icon-album.svg
+
+Depois edite index.html conforme o arquivo INDEX-TRECHO.txt.
+
+IMPORTANTE:
+- NAO apague IndexedDB/dados do site no celular.
+- NAO desinstale a PWA antes de testar a recuperacao do comprovante antigo.
+- A v178 sincroniza o banco antigo ticket-absence-db-[perfil] com a base nova ticket-absence-v1.
+- Se o comprovante antigo ainda estiver fisicamente no IndexedDB do mesmo navegador/perfil, ele voltara a aparecer.
+- Se os dados do site ja tiverem sido apagados pelo navegador/usuario, nao ha como reconstruir a foto original pelo GitHub, porque ela nunca foi enviada ao repositorio.
