@@ -1,22 +1,83 @@
 #absenceGalleryButton,#absenceClearPhotoButton,#absenceModal [data-absence-list]{display:none!important}
-#absenceModal .absence-photo-panel{border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-md);overflow:hidden;padding:0;gap:0}
-#absenceModal .absence-photo-heading{min-height:58px;display:flex;align-items:center;padding:12px 16px;color:#fff;background:var(--navy-900);border:0;border-radius:0}
-#absenceModal .absence-photo-heading strong{font-size:.92rem}
-#absenceModal .absence-photo-heading small{display:block;margin-top:3px;color:#c9d5e5;font-size:.72rem}
-#absenceModal .absence-camera-viewport{position:relative;width:100%;aspect-ratio:4/4.15;min-height:0;overflow:hidden;border-radius:0;background:#15233a}
-#absenceModal .absence-camera-viewport video,#absenceModal .absence-camera-viewport .absence-preview{position:absolute;inset:0;width:100%;height:100%;max-height:none;object-fit:contain;background:#111b2a}
-#absenceModal .absence-camera-placeholder{position:absolute;inset:0;width:100%;height:100%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:30px;color:#d9e1ec;text-align:center;background:#15233a}
-#absenceModal .absence-camera-placeholder strong{font-size:1rem}
-#absenceModal .absence-camera-placeholder small{max-width:310px;color:#91a2b9;font-size:.78rem;line-height:1.5}
+
+#absenceModal{background:rgba(3,13,31,.82)}
+#absenceModal .absence-card{width:min(760px,100%);background:#07182f;color:#f4f7fb;border:1px solid rgba(137,157,185,.16);box-shadow:0 24px 70px rgba(0,0,0,.38)}
+#absenceModal .absence-head{margin-bottom:18px}
+#absenceModal .absence-head h2{font-size:1.65rem;letter-spacing:-.025em;color:#fff}
+#absenceModal .absence-head p{color:#b8c6d9;opacity:1}
+#absenceModal .absence-close{color:#eef4ff}
+
+#absenceModal .absence-form{gap:18px}
+#absenceModal .absence-grid{gap:14px 18px;padding:16px;border:1px solid rgba(139,160,190,.16);border-radius:16px;background:rgba(255,255,255,.045)}
+#absenceModal .absence-field{gap:7px}
+#absenceModal .absence-field span{color:#dce6f4;font-size:.84rem;font-weight:650}
+#absenceModal .absence-field input,#absenceModal .absence-field select,#absenceModal .absence-field textarea{min-height:48px;border:1px solid rgba(151,170,198,.34);border-radius:10px;background:rgba(9,28,53,.72);color:#f5f8fc}
+#absenceModal .absence-field textarea{min-height:82px;padding-top:12px}
+
+#absenceModal .absence-photo-panel{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;padding:0!important;gap:12px!important}
+#absenceModal .absence-photo-heading{min-height:0!important;display:block!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#fff!important}
+#absenceModal .absence-photo-heading strong{font-size:.92rem!important;letter-spacing:.06em;text-transform:uppercase;color:#f4f7fb}
+#absenceModal .absence-photo-heading small{display:none!important}
+
+#absenceModal .absence-camera-viewport{position:relative;width:100%;aspect-ratio:1.55/1;min-height:300px;overflow:hidden;border-radius:5px!important;background:#000!important;border:1px solid rgba(148,167,194,.18)}
+#absenceModal .absence-camera-viewport video,#absenceModal .absence-camera-viewport .absence-preview{position:absolute;inset:0;width:100%;height:100%;max-height:none;object-fit:contain;background:#000!important}
+#absenceModal .absence-camera-placeholder{position:absolute;inset:0;width:100%;height:100%;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:30px;color:#d8e3f0;text-align:center;background:#000!important}
+#absenceModal .absence-camera-placeholder strong{font-size:.95rem}
+#absenceModal .absence-camera-placeholder small{max-width:310px;color:#8899ae;font-size:.76rem;line-height:1.5}
 #absenceModal .absence-camera-placeholder.hidden,#absenceModal .absence-camera-placeholder.camera-active{display:none}
-#absenceModal .absence-camera-viewport::after{content:"";pointer-events:none;position:absolute;inset:9%;z-index:5;background:linear-gradient(var(--gold-400),var(--gold-400)) left top/38px 3px no-repeat,linear-gradient(var(--gold-400),var(--gold-400)) left top/3px 38px no-repeat,linear-gradient(var(--gold-400),var(--gold-400)) right top/38px 3px no-repeat,linear-gradient(var(--gold-400),var(--gold-400)) right top/3px 38px no-repeat,linear-gradient(var(--gold-400),var(--gold-400)) left bottom/38px 3px no-repeat,linear-gradient(var(--gold-400),var(--gold-400)) left bottom/3px 38px no-repeat,linear-gradient(var(--gold-400),var(--gold-400)) right bottom/38px 3px no-repeat,linear-gradient(var(--gold-400),var(--gold-400)) right bottom/3px 38px no-repeat}
-#absenceModal .absence-camera-actions{position:relative;display:flex;align-items:center;justify-content:center;gap:38px;padding:71px 18px 18px;background:var(--surface);border:0;border-radius:0}
-#absenceModal .absence-camera-actions::before{content:"Câmera pronta";position:absolute;left:0;right:0;top:0;min-height:53px;display:grid;grid-template-columns:10px auto 1fr;align-items:center;gap:9px;padding:0 17px;border-bottom:1px solid var(--line);color:var(--text);font-size:.74rem;font-weight:700}
-#absenceModal .absence-camera-actions::after{content:"Centralize o documento e toque no círculo.";position:absolute;left:138px;right:17px;top:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:.69rem;font-weight:400}
-#absenceModal #absenceCapturePhotoButton{width:66px!important;height:66px;min-width:66px;padding:0!important;border:3px solid var(--navy-900);border-radius:50%;display:grid;place-items:center;background:#fff;color:transparent;font-size:0;box-shadow:none;order:1}
-#absenceModal #absenceCapturePhotoButton::after{content:"";width:50px;height:50px;border-radius:50%;background:var(--gold-500);box-shadow:inset 0 0 0 3px #fff}
-#absenceModal #absenceOpenCameraButton{width:calc(100% - 34px)!important;min-height:44px;margin:0 17px 17px;border:1px solid #9aa7ba;border-radius:9px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center;gap:9px;color:var(--navy-900);background:#fff;font-weight:720;order:2}
-#absenceModal .absence-camera-actions #absenceOpenCameraButton{position:absolute;left:0;right:0;bottom:-61px}
-#absenceModal .absence-actions{margin-top:61px;display:flex;justify-content:flex-end}
-#absenceModal .absence-actions .primary{width:100%}
-@media(max-width:560px){#absenceModal .absence-card{width:100%;max-height:96vh;padding:14px;border-radius:14px}#absenceModal .absence-photo-panel{width:calc(100% + 28px);margin-left:-14px;border-left:0;border-right:0;border-radius:0}#absenceModal .absence-camera-viewport{aspect-ratio:3/3.7}#absenceModal .absence-camera-actions{gap:31px}#absenceModal .absence-camera-actions::after{left:126px}}
+#absenceModal .absence-camera-icon{display:none}
+
+#absenceModal .absence-camera-viewport::after{content:"";pointer-events:none;position:absolute;inset:20px;z-index:5;background:linear-gradient(#f4f7fb,#f4f7fb) left top/42px 4px no-repeat,linear-gradient(#f4f7fb,#f4f7fb) left top/4px 42px no-repeat,linear-gradient(#f4f7fb,#f4f7fb) right top/42px 4px no-repeat,linear-gradient(#f4f7fb,#f4f7fb) right top/4px 42px no-repeat,linear-gradient(#f4f7fb,#f4f7fb) left bottom/42px 4px no-repeat,linear-gradient(#f4f7fb,#f4f7fb) left bottom/4px 42px no-repeat,linear-gradient(#f4f7fb,#f4f7fb) right bottom/42px 4px no-repeat,linear-gradient(#f4f7fb,#f4f7fb) right bottom/4px 42px no-repeat}
+
+#absenceModal .absence-camera-actions{position:relative;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:16px!important;padding:67px 0 0!important;background:transparent!important;border:0!important;border-radius:0!important}
+#absenceModal .absence-camera-actions::before{content:"";position:absolute;left:4px;top:19px;width:10px;height:10px;border-radius:50%;background:#16b36d;box-shadow:0 0 0 6px rgba(22,179,109,.14)}
+#absenceModal .absence-camera-actions::after{content:"Câmera pronta   Centralize o comprovante e toque no círculo.";position:absolute;left:28px;right:4px;top:14px;color:#b9c7d9;font-size:.78rem;line-height:1.45;text-align:left;white-space:normal}
+
+#absenceModal #absenceCapturePhotoButton{order:1!important;width:76px!important;height:76px!important;min-width:76px!important;padding:0!important;border:8px solid #fff!important;border-radius:50%!important;display:grid!important;place-items:center!important;background:#f0bd43!important;color:transparent!important;font-size:0!important;box-shadow:0 0 0 1px rgba(255,255,255,.12)!important}
+#absenceModal #absenceCapturePhotoButton::after{content:"";width:56px;height:56px;border-radius:50%;background:#f0bd43}
+#absenceModal #absenceCapturePhotoButton.hidden{display:none!important}
+
+#absenceModal #absenceOpenCameraButton{order:2!important;position:static!important;width:100%!important;min-height:52px!important;margin:4px 0 0!important;border:1px solid rgba(170,190,216,.42)!important;border-radius:12px!important;padding:0 18px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:9px!important;color:#f4f7fb!important;background:rgba(10,28,52,.55)!important;font-size:1rem!important;font-weight:760!important}
+#absenceModal #absenceOpenCameraButton:hover{background:rgba(19,47,82,.7)!important}
+
+#absenceModal .absence-actions{margin-top:0!important;display:flex!important}
+#absenceModal .absence-actions .primary{width:100%!important;min-height:50px;border-radius:11px;background:linear-gradient(135deg,#f3cd69,#e7b948);color:#101828}
+
+#absenceModal .absence-list{margin-top:26px!important;gap:10px!important}
+#absenceModal .absence-list-title{margin-bottom:2px}
+#absenceModal .absence-list-title strong{color:#f4f7fb;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase}
+#absenceModal .absence-list-title small{display:none}
+#absenceModal .absence-item{position:relative;display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:5px 14px!important;padding:15px 46px 15px 16px!important;border:1px solid rgba(143,164,192,.12)!important;border-radius:14px!important;background:rgba(255,255,255,.055)!important;color:#f4f7fb}
+#absenceModal .absence-item::after{content:"›";position:absolute;right:16px;top:50%;transform:translateY(-50%);color:#a7b6c9;font-size:2rem;font-weight:300}
+#absenceModal .absence-item .absence-tag{grid-column:1/-1;width:max-content;padding:0!important;background:transparent!important;color:#f5f8fc!important;font-size:1rem!important;font-weight:760!important}
+#absenceModal .absence-item>strong{grid-column:1;color:#cbd8e8;font-size:.83rem!important;font-weight:500!important}
+#absenceModal .absence-item>small:not(.absence-no-document){grid-column:1;color:#9fafc2!important}
+#absenceModal .absence-document-button{grid-column:2;grid-row:2/4;align-self:center;border:0!important;border-radius:999px!important;padding:7px 11px!important;background:rgba(18,157,92,.18)!important;color:#5ed99b!important;font-size:.72rem!important;font-weight:700!important;white-space:nowrap}
+#absenceModal .absence-no-document{grid-column:2;grid-row:2/4;align-self:center;padding:6px 9px;border-radius:999px;background:rgba(126,142,164,.12);color:#99a8ba!important;font-size:.7rem!important;opacity:1!important}
+
+#absenceViewer .absence-viewer-card{background:#07182f!important;color:#f4f7fb!important}
+
+@media(max-width:560px){
+  #absenceModal{display:block!important;overflow:auto!important;padding:0!important;background:#07182f!important}
+  #absenceModal[hidden]{display:none!important}
+  #absenceModal .absence-card{width:100%!important;max-width:none!important;min-height:100vh!important;max-height:none!important;overflow:visible!important;border:0!important;border-radius:0!important;padding:24px 18px 38px!important;background:linear-gradient(180deg,#071a35 0%,#07182f 45%,#06162b 100%)!important;box-shadow:none!important}
+  #absenceModal .absence-close{position:absolute;right:14px;top:14px;width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,.06);font-size:1.35rem}
+  #absenceModal .absence-head{padding-right:44px;margin:4px 0 18px!important}
+  #absenceModal .absence-head h2{font-size:1.55rem!important}
+  #absenceModal .absence-head p{font-size:.9rem!important;line-height:1.45}
+  #absenceModal .absence-grid{grid-template-columns:1fr 1fr!important;padding:14px!important;border-radius:14px!important}
+  #absenceModal .absence-field textarea{min-height:76px}
+  #absenceModal .absence-photo-heading{margin-top:2px}
+  #absenceModal .absence-camera-viewport{aspect-ratio:1.28/1!important;min-height:0!important;border-radius:4px!important}
+  #absenceModal .absence-camera-viewport::after{inset:16px}
+  #absenceModal .absence-camera-actions{padding-top:67px!important}
+  #absenceModal .absence-actions{margin-top:2px!important}
+  #absenceModal .absence-list{margin-top:30px!important}
+}
+
+@media(max-width:390px){
+  #absenceModal .absence-grid{grid-template-columns:1fr!important}
+  #absenceModal .absence-camera-viewport{aspect-ratio:1.18/1!important}
+  #absenceModal .absence-item{grid-template-columns:1fr!important;padding-right:40px!important}
+  #absenceModal .absence-document-button,#absenceModal .absence-no-document{grid-column:1!important;grid-row:auto!important;justify-self:start;margin-top:4px}
+}
