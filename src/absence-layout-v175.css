@@ -1,0 +1,33 @@
+.absence-screen-v175{background:rgba(3,13,31,.84)}
+.absence-screen-v175 .absence-page-v175{width:min(760px,100%);background:linear-gradient(180deg,#071a35 0%,#07182f 55%,#06162b 100%);color:#f4f7fb;border:1px solid rgba(137,157,185,.16);box-shadow:0 24px 70px rgba(0,0,0,.4)}
+.absence-screen-v175 .absence-head h2{font-size:1.7rem;letter-spacing:-.03em;color:#fff}
+.absence-screen-v175 .absence-head p{color:#b8c6d9;opacity:1}
+.absence-screen-v175 .absence-close{color:#eef4ff}
+.absence-screen-v175 .absence-form-v175{gap:18px}
+.absence-screen-v175 .absence-grid{gap:14px 18px;padding:16px;border:1px solid rgba(139,160,190,.16);border-radius:16px;background:rgba(255,255,255,.045)}
+.absence-screen-v175 .absence-field span{color:#dce6f4;font-size:.84rem}
+.absence-screen-v175 .absence-field input,.absence-screen-v175 .absence-field select,.absence-screen-v175 .absence-field textarea{min-height:48px;border:1px solid rgba(151,170,198,.34);border-radius:10px;background:rgba(9,28,53,.72);color:#f5f8fc}
+.absence-screen-v175 .absence-field textarea{min-height:82px;padding-top:12px}
+.absence-proof-v175{display:grid;gap:0}
+.absence-proof-title-v175{margin:4px 0 12px;color:#f4f7fb;font-size:.92rem;font-weight:800;letter-spacing:.07em}
+.absence-scanner-viewport-v175{border-radius:5px;background:#000}
+.absence-scanner-viewport-v175 video,.absence-scanner-viewport-v175>img{background:#000}
+.absence-scanner-controls-v175{background:transparent;padding:18px}
+.absence-open-camera-v175{padding:0 0 17px}
+.absence-open-camera-v175 .button{width:100%;color:#f4f7fb;background:rgba(10,28,52,.52);border-color:rgba(170,190,216,.42)}
+.absence-open-camera-v175 .button:hover{background:rgba(19,47,82,.7)}
+.absence-screen-v175 .quality-bar{border-color:rgba(139,160,190,.16);color:#f4f7fb;background:transparent}
+.absence-screen-v175 .quality-bar small{color:#9fafc2}
+.absence-screen-v175 .absence-save-row-v175{margin-top:0}
+.absence-screen-v175 .absence-records-v175{margin-top:28px}
+.absence-screen-v175 .absence-list-title strong{color:#f4f7fb;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase}
+.absence-screen-v175 .absence-list-title small{display:none}
+.absence-screen-v175 .absence-item{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 14px;padding:15px 46px 15px 16px;border:1px solid rgba(143,164,192,.12);border-radius:14px;background:rgba(255,255,255,.055);color:#f4f7fb}
+.absence-screen-v175 .absence-item::after{content:"›";position:absolute;right:16px;top:50%;transform:translateY(-50%);color:#a7b6c9;font-size:2rem;font-weight:300}
+.absence-screen-v175 .absence-item .absence-tag{grid-column:1/-1;width:max-content;padding:0;background:transparent;color:#f5f8fc;font-size:1rem;font-weight:760}
+.absence-screen-v175 .absence-item>strong{grid-column:1;color:#cbd8e8;font-size:.83rem;font-weight:500}
+.absence-screen-v175 .absence-item>small:not(.absence-no-document){grid-column:1;color:#9fafc2}
+.absence-screen-v175 .absence-document-button{grid-column:2;grid-row:2/4;align-self:center;border:0;border-radius:999px;padding:7px 11px;background:rgba(18,157,92,.18);color:#5ed99b;font-size:.72rem;font-weight:700;white-space:nowrap}
+.absence-screen-v175 .absence-no-document{grid-column:2;grid-row:2/4;align-self:center;padding:6px 9px;border-radius:999px;background:rgba(126,142,164,.12);color:#99a8ba;opacity:1}
+@media(max-width:560px){.absence-screen-v175{display:block;overflow:auto;padding:0;background:#07182f}.absence-screen-v175[hidden]{display:none}.absence-screen-v175 .absence-page-v175{width:100%;max-width:none;min-height:100vh;max-height:none;overflow:visible;border:0;border-radius:0;padding:24px 18px 38px;box-shadow:none}.absence-screen-v175 .absence-close{position:absolute;right:14px;top:14px;width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,.06)}.absence-screen-v175 .absence-head{padding-right:44px;margin:4px 0 18px}.absence-screen-v175 .absence-head h2{font-size:1.55rem}.absence-screen-v175 .absence-grid{grid-template-columns:1fr 1fr;padding:14px}.absence-screen-v175 .absence-scanner-viewport-v175{aspect-ratio:3/3.7}.absence-screen-v175 .scanner-controls{gap:31px}.absence-screen-v175 .absence-records-v175{margin-top:30px}}
+@media(max-width:390px){.absence-screen-v175 .absence-grid{grid-template-columns:1fr}.absence-screen-v175 .absence-item{grid-template-columns:1fr;padding-right:40px}.absence-screen-v175 .absence-document-button,.absence-screen-v175 .absence-no-document{grid-column:1;grid-row:auto;justify-self:start;margin-top:4px}}
