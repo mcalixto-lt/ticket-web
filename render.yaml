@@ -20,10 +20,6 @@ services:
         value: strict-origin-when-cross-origin
 
       - path: /*
-        name: Permissions-Policy
-        value: camera=(self), microphone=()
-
-      - path: /*
         name: X-Frame-Options
         value: SAMEORIGIN
 
