@@ -141,3 +141,11 @@ test('saldo calculado pelo Ticket considera apenas datas posteriores à referên
   ];
   assert.equal(accumulatedTicketBalance(records, {}, { afterDate: '2026-07-15', throughDate: '2026-07-31' }), 20);
 });
+
+test('saldo acumulado sem referência considera todos os registros desde o início', () => {
+  const records = [
+    { date: '2026-07-01', punches: ['08:00', '12:00', '14:00', '18:30'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+    { date: '2026-07-02', punches: ['08:10', '12:00', '14:00', '17:50'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+  ];
+  assert.equal(accumulatedTicketBalance(records, {}, { afterDate: '', throughDate: '2026-07-31' }), 10);
+});

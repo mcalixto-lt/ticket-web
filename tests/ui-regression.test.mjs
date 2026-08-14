@@ -195,3 +195,12 @@ test('captura de comprovante usa apenas um seletor de horário', () => {
   assert.doesNotMatch(mainSource, /addConfirmedTimeButton/);
   assert.match(mainSource, /single-time-row/);
 });
+
+test('remove uma vez o saldo anterior de 11h30 e elimina o corte de datas', () => {
+  assert.match(mainSource, /function hasPreviousBalance\(\)/);
+  assert.match(mainSource, /state\.balanceSettings\?\.type !== 'none'/);
+  assert.match(mainSource, /removedPreviousBalance1130At/);
+  assert.match(mainSource, /Number\(settings\.minutes \|\| 0\) !== 11 \* 60 \+ 30/);
+  assert.match(mainSource, /referenceDate: savedReferenceDate/);
+  assert.match(mainSource, /Todos os registros estão sendo considerados desde o início/);
+});

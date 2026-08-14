@@ -157,11 +157,16 @@ function formatPeriodLabel(period) {
   return `${formatDateBr(period.startDate)} até ${formatDateBr(period.endDate)}`;
 }
 
+function hasPreviousBalance() {
+  return state.balanceSettings?.type !== 'none' && Number(state.balanceSettings?.minutes || 0) !== 0;
+}
+
 function balanceReferenceDate() {
-  return state.balanceSettings?.referenceDate || '';
+  return hasPreviousBalance() ? state.balanceSettings?.referenceDate || '' : '';
 }
 
 function previousBalanceMinutes(throughDate = todayIso()) {
+  if (!hasPreviousBalance()) return 0;
   const referenceDate = balanceReferenceDate();
   if (referenceDate && throughDate < referenceDate) return 0;
   return Number(state.balanceSettings?.minutes || 0);
@@ -1272,6 +1277,39 @@ function updateBalanceInputState() {
   });
 }
 
+function applyRequestedPreviousBalanceReset() {
+  const settings = state.balanceSettings || {};
+  if (settings.adjustments?.removedPreviousBalance1130At) return false;
+  if (Number(settings.minutes || 0) !== 11 * 60 + 30) return false;
+
+  const changedAt = new Date().toISOString();
+  state.balanceSettings = {
+    ...settings,
+    minutes: 0,
+    type: 'none',
+    referenceDate: '',
+    note: '',
+    updatedAt: changedAt,
+    adjustments: {
+      ...(settings.adjustments || {}),
+      removedPreviousBalance1130At: changedAt,
+    },
+    history: [
+      ...(settings.history || []),
+      {
+        id: uuid(),
+        previousMinutes: 11 * 60 + 30,
+        minutes: 0,
+        referenceDate: '',
+        note: 'Saldo anterior de 11h30 removido temporariamente para recalcular todos os registros desde o início.',
+        changedAt,
+      },
+    ],
+  };
+  saveBalanceSettings(state.balanceSettings);
+  return true;
+}
+
 function renderBalanceSettings() {
   const historyTarget = document.querySelector('#balanceHistoryList');
   if (!historyTarget) return;
@@ -1304,26 +1342,33 @@ async function saveBalanceSettingsFromForm(event) {
   let minutes = hours * 60 + minutesPart;
   if (type === 'negative') minutes *= -1;
   if (type === 'none') minutes = 0;
+  const savedReferenceDate = type === 'none' ? '' : referenceDate;
+  const savedNote = type === 'none' ? '' : note;
   const previousMinutes = Number(state.balanceSettings?.minutes || 0);
-  const confirmed = window.confirm(`Confirmar saldo anterior de ${formatDuration(minutes, { signed: true, suffix: true })}, válido até ${formatDateBr(referenceDate)}?\n\nAs batidas e os cálculos diários já registrados não serão alterados.`);
+  const confirmationMessage = type === 'none'
+    ? 'Confirmar a remoção do saldo anterior?\n\nO Ticket. recalculará o saldo usando todos os registros desde o início.'
+    : `Confirmar saldo anterior de ${formatDuration(minutes, { signed: true, suffix: true })}, válido até ${formatDateBr(savedReferenceDate)}?\n\nAs batidas e os cálculos diários já registrados não serão alterados.`;
+  const confirmed = window.confirm(confirmationMessage);
   if (!confirmed) return;
   const changedAt = new Date().toISOString();
   state.balanceSettings = {
     minutes,
     type,
-    referenceDate,
-    note,
+    referenceDate: savedReferenceDate,
+    note: savedNote,
     updatedAt: changedAt,
     history: [
       ...(state.balanceSettings?.history || []),
-      { id: uuid(), previousMinutes, minutes, referenceDate, note, changedAt },
+      { id: uuid(), previousMinutes, minutes, referenceDate: savedReferenceDate, note: savedNote, changedAt },
     ],
   };
   saveBalanceSettings(state.balanceSettings);
   renderBalanceSettings();
   renderDashboard();
   renderReports();
-  toast('Saldo anterior salvo sem alterar os registros de ponto.', 'success', 6000);
+  toast(type === 'none'
+    ? 'Saldo anterior removido. Todos os registros estão sendo considerados desde o início.'
+    : 'Saldo anterior salvo sem alterar os registros de ponto.', 'success', 6000);
 }
 
 function closingDraftFromForm() {
@@ -2132,6 +2177,7 @@ async function bootApp() {
   setStorageNamespace(state.profile.id || state.profile.cpfHash?.slice(0, 24) || 'default');
   state.schedule = loadSchedule(DEFAULT_SCHEDULE);
   state.balanceSettings = loadBalanceSettings();
+  applyRequestedPreviousBalanceReset();
   state.closingPeriod = loadClosingPeriodSettings();
   state.selectedReportMonth = monthKey(closingPeriodForDate(todayIso(), state.closingPeriod).startDate);
   const storedCloud = loadCloudSettings();
