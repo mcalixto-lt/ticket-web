@@ -147,9 +147,14 @@ test('captura usa seletor nativo de horário em vez de textarea', () => {
   assert.doesNotMatch(mainSource, /id="confirmedTimesField"/);
 });
 
-test('câmera é aberta automaticamente ao acessar Capturar comprovante', () => {
-  assert.match(mainSource, /view === 'scan' && state\.captureMode === 'receipt'/);
-  assert.match(mainSource, /openCamera\(\{ automatic: true \}\)/);
+test('câmera abre pelo toque e usa captura nativa no celular', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(mainSource, /id="nativeCameraInput" type="file" accept="image\/\*" capture="environment" hidden/);
+  assert.match(mainSource, /function isNativeCameraPreferred\(\)/);
+  assert.match(mainSource, /if \(isNativeCameraPreferred\(\) && openNativeCamera\(\)\) return;/);
+  assert.match(mainSource, /Permissão da câmera bloqueada/);
+  assert.doesNotMatch(mainSource, /window\.setTimeout\(\(\) => \{[\s\S]{0,300}openCamera\(\{ automatic: true \}\)/);
+  assert.doesNotMatch(html, /mobile-camera-fallback\.js/);
 });
 
 test('botão de tema aparece no cabeçalho móvel abaixo do menu', () => {

@@ -565,6 +565,7 @@ function scanViewTemplate() {
         <div id="qualityBar" class="quality-bar"><span class="quality-dot"></span><strong>Sem imagem</strong><small>Selecione ou fotografe uma imagem</small></div>
         <div class="scanner-controls">
           <input id="imageFileInput" type="file" accept="image/*" hidden />
+          <input id="nativeCameraInput" type="file" accept="image/*" capture="environment" hidden />
           <button id="chooseImageButton" class="round-action" title="Abrir galeria" aria-label="Abrir galeria de fotos">${icon('image', 22)}</button>
           <button id="captureButton" class="capture-button" aria-label="Capturar foto"><span></span></button>
           <button id="rotateImageButton" class="round-action" title="Girar imagem">${icon('rotate', 22)}</button>
@@ -730,13 +731,15 @@ function helpViewTemplate() {
 
 function bindShellEvents() {
   document.querySelectorAll('[data-view-target]').forEach((button) => {
-    button.addEventListener('click', async () => {
-      if (button.dataset.viewTarget === 'scan') {
+    button.addEventListener('click', () => {
+      const opensCamera = button.dataset.viewTarget === 'scan';
+      if (opensCamera) {
         state.captureMode = 'receipt';
-        await resetScan();
+        resetScan();
         renderScanModeCopy();
       }
-      navigate(button.dataset.viewTarget, { autoCamera: button.dataset.viewTarget === 'scan' });
+      navigate(button.dataset.viewTarget, { autoCamera: false });
+      if (opensCamera) openCamera({ automatic: true });
     });
   });
   document.querySelector('#logoutButton')?.addEventListener('click', logout);
@@ -872,11 +875,6 @@ function navigate(view, options = {}) {
   if (view === 'storage') renderStorageSettings();
   syncBrowserHistory(view, options.historyMode || 'push');
 
-  if (view === 'scan' && state.captureMode === 'receipt' && options.autoCamera !== false && !state.selectedImage && !state.cameraStream) {
-    window.setTimeout(() => {
-      if (state.view === 'scan' && state.captureMode === 'receipt' && !state.selectedImage && !state.cameraStream) openCamera({ automatic: true });
-    }, 80);
-  }
 }
 
 function handleConnectivityChange() {
@@ -1002,15 +1000,16 @@ function renderDashboard() {
 }
 
 function bindDashboardEvents() {
-  document.querySelector('#registerReceiptButton')?.addEventListener('click', async () => {
+  document.querySelector('#registerReceiptButton')?.addEventListener('click', () => {
     state.captureMode = 'receipt';
-    await resetScan();
+    resetScan();
     renderScanModeCopy();
-    navigate('scan', { stopCamera: false, autoCamera: true });
+    navigate('scan', { stopCamera: false, autoCamera: false });
+    openCamera({ automatic: true });
   });
-  document.querySelector('#registerEnvironmentButton')?.addEventListener('click', async () => {
+  document.querySelector('#registerEnvironmentButton')?.addEventListener('click', () => {
     state.captureMode = 'environment';
-    await resetScan();
+    resetScan();
     renderScanModeCopy();
     navigate('scan', { stopCamera: false, autoCamera: false });
   });
@@ -1623,6 +1622,11 @@ function bindScanEvents() {
     if (file) await setSelectedImage(file, file.name);
     event.target.value = '';
   });
+  document.querySelector('#nativeCameraInput')?.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (file) await setSelectedImage(file, file.name || `ticket-${Date.now()}.jpg`);
+    event.target.value = '';
+  });
   document.querySelector('#rotateImageButton')?.addEventListener('click', rotateSelectedImage);
   document.querySelectorAll('[data-image-style]').forEach((button) => button.addEventListener('click', () => applyImageStyle(button.dataset.imageStyle)));
   document.querySelector('#continueRegistrationButton')?.addEventListener('click', async () => {
@@ -1638,9 +1642,49 @@ function bindScanEvents() {
   document.querySelector('#confirmedDateField')?.addEventListener('input', updateReviewClassification);
 }
 
-async function openCamera({ automatic = false } = {}) {
+function isNativeCameraPreferred() {
+  const userAgent = navigator.userAgent || '';
+  const mobileSystem = /Android|iPhone|iPad|iPod/i.test(userAgent);
+  const iPadDesktopMode = /Macintosh/i.test(userAgent) && navigator.maxTouchPoints > 1;
+  return mobileSystem || iPadDesktopMode;
+}
+
+function openNativeCamera() {
+  const input = document.querySelector('#nativeCameraInput');
+  if (!input) return false;
   try {
-    if (!navigator.mediaDevices?.getUserMedia) throw new Error('A câmera direta não está disponível. Use “Escolher imagem”.');
+    stopCamera();
+    input.value = '';
+    input.click();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function showCameraError(error, { automatic = false } = {}) {
+  const blocked = ['NotAllowedError', 'PermissionDeniedError', 'SecurityError'].includes(error?.name)
+    || /denied|permission|permissão|negado|bloquead/i.test(error?.message || '');
+  const insecure = !window.isSecureContext;
+  const message = insecure
+    ? 'A câmera só funciona em uma conexão segura (HTTPS).'
+    : blocked
+      ? 'Permissão da câmera bloqueada. No navegador, abra as permissões deste site, permita a câmera e toque novamente em “Abrir câmera”.'
+      : error?.message || (automatic ? 'Não foi possível iniciar a câmera.' : 'Não foi possível abrir a câmera.');
+
+  const quality = document.querySelector('#qualityBar');
+  if (quality) {
+    quality.innerHTML = `<span class="quality-dot medium"></span><strong>${blocked ? 'Permissão da câmera bloqueada' : 'Câmera indisponível'}</strong><small>${message}</small>`;
+  }
+  toast(message, 'error', 9000);
+}
+
+async function openCamera({ automatic = false } = {}) {
+  if (isNativeCameraPreferred() && openNativeCamera()) return;
+
+  try {
+    if (!window.isSecureContext) throw new DOMException('A câmera requer HTTPS.', 'SecurityError');
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('A câmera direta não está disponível neste navegador.');
     stopCamera();
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
@@ -1659,8 +1703,7 @@ async function openCamera({ automatic = false } = {}) {
     document.querySelector('#scanPlaceholder').classList.add('hidden');
     document.querySelector('#qualityBar').innerHTML = '<span class="quality-dot good"></span><strong>Câmera pronta</strong><small>Centralize o comprovante e toque no círculo.</small>';
   } catch (error) {
-    const fallback = automatic ? 'A câmera não foi autorizada. Você ainda pode escolher uma imagem da galeria.' : 'Não foi possível abrir a câmera.';
-    toast(error.message || fallback, 'error', 6500);
+    showCameraError(error, { automatic });
   }
 }
 
@@ -2041,7 +2084,7 @@ async function saveConfirmedRecord(event) {
       toast(captureType === 'environment' ? 'Registro de ambiente salvo como evidência auxiliar. As batidas não foram alteradas.' : 'Registro salvo e bloqueado neste dispositivo.', 'success', 6000);
     }
 
-    await resetScan();
+    resetScan();
     await refreshData();
     navigate('dashboard');
   } catch (error) {
@@ -2051,7 +2094,7 @@ async function saveConfirmedRecord(event) {
   }
 }
 
-async function resetScan() {
+function resetScan() {
   stopCamera();
   if (state.selectedImageUrl) URL.revokeObjectURL(state.selectedImageUrl);
   state.sourceImage = null;
