@@ -1,53 +1,76 @@
 (() => {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') || window.matchMedia?.('(max-width: 820px)').matches;
-  if (!isMobile) return;
+  let permissionState = 'unknown';
+  let fallbackTimer = null;
 
-  function install() {
-    const originalInput = document.querySelector('#imageFileInput');
-    if (!originalInput || document.querySelector('#nativeCameraInput')) return;
+  function fileInput() {
+    return document.querySelector('#imageFileInput');
+  }
 
-    const nativeInput = document.createElement('input');
-    nativeInput.id = 'nativeCameraInput';
-    nativeInput.type = 'file';
-    nativeInput.accept = 'image/*';
-    nativeInput.setAttribute('capture', 'environment');
-    nativeInput.hidden = true;
-    document.body.appendChild(nativeInput);
+  function cameraActive() {
+    const video = document.querySelector('#cameraVideo');
+    return Boolean(video && !video.classList.contains('hidden') && video.srcObject);
+  }
 
-    nativeInput.addEventListener('change', () => {
-      const file = nativeInput.files?.[0];
-      if (!file) return;
-      try {
-        const transfer = new DataTransfer();
-        transfer.items.add(file);
-        originalInput.files = transfer.files;
-      } catch {
-        // Alguns navegadores não permitem atribuir FileList. Nesse caso,
-        // recriamos um DataTransfer e disparamos o mesmo fluxo quando possível.
+  function imageSelected() {
+    const image = document.querySelector('#scanPreviewImage');
+    return Boolean(image && !image.classList.contains('hidden') && image.getAttribute('src'));
+  }
+
+  function setFallbackMessage() {
+    const quality = document.querySelector('#qualityBar');
+    if (!quality || cameraActive() || imageSelected()) return;
+    quality.innerHTML = '<span class="quality-dot medium"></span><strong>Acesso à câmera não disponível</strong><small>Selecione o comprovante na galeria para continuar.</small>';
+  }
+
+  function openGallery() {
+    const input = fileInput();
+    if (!input) return;
+    setFallbackMessage();
+    try {
+      input.removeAttribute('capture');
+      input.click();
+    } catch {}
+  }
+
+  async function refreshPermission() {
+    try {
+      if (!navigator.permissions?.query) {
+        permissionState = 'unknown';
+        return;
       }
-      originalInput.dispatchEvent(new Event('change', { bubbles: true }));
-      nativeInput.value = '';
-    });
+      const status = await navigator.permissions.query({ name: 'camera' });
+      permissionState = status.state;
+      status.addEventListener?.('change', () => {
+        permissionState = status.state;
+      });
+    } catch {
+      permissionState = 'unknown';
+    }
   }
 
   document.addEventListener('click', (event) => {
     const button = event.target.closest?.('#openCameraButton, #captureButton');
     if (!button) return;
 
-    const video = document.querySelector('#cameraVideo');
-    const directCameraIsActive = video && !video.classList.contains('hidden') && video.srcObject;
-    if (button.id === 'captureButton' && directCameraIsActive) return;
+    if (button.id === 'captureButton' && cameraActive()) return;
 
-    install();
-    const nativeInput = document.querySelector('#nativeCameraInput');
-    if (!nativeInput) return;
+    if (permissionState === 'denied') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      openGallery();
+      return;
+    }
 
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    nativeInput.click();
+    clearTimeout(fallbackTimer);
+    fallbackTimer = window.setTimeout(() => {
+      if (!cameraActive() && !imageSelected()) openGallery();
+    }, 1800);
   }, true);
 
-  const observer = new MutationObserver(install);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-  install();
+  window.addEventListener('pageshow', refreshPermission);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshPermission();
+  });
+
+  refreshPermission();
 })();
