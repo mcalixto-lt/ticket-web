@@ -196,11 +196,20 @@ test('captura de comprovante usa apenas um seletor de horário', () => {
   assert.match(mainSource, /single-time-row/);
 });
 
-test('remove uma vez o saldo anterior de 11h30 e elimina o corte de datas', () => {
-  assert.match(mainSource, /function hasPreviousBalance\(\)/);
-  assert.match(mainSource, /state\.balanceSettings\?\.type !== 'none'/);
-  assert.match(mainSource, /removedPreviousBalance1130At/);
-  assert.match(mainSource, /Number\(settings\.minutes \|\| 0\) !== 11 \* 60 \+ 30/);
-  assert.match(mainSource, /referenceDate: savedReferenceDate/);
-  assert.match(mainSource, /Todos os registros estão sendo considerados desde o início/);
+test('restaura uma vez o saldo oficial do DP até 12/08 sem alterar batidas', () => {
+  assert.match(mainSource, /function applyOfficialDpBalanceThrough20260812\(\)/);
+  assert.match(mainSource, /officialDpBalance20260812At/);
+  assert.match(mainSource, /officialBalanceMinutes = 11 \* 60 \+ 30/);
+  assert.match(mainSource, /officialReferenceDate = '2026-08-12'/);
+  assert.match(mainSource, /3 horas foram abonadas/);
+  assert.match(mainSource, /applyOfficialDpBalanceThrough20260812\(\)/);
+  assert.doesNotMatch(mainSource, /applyRequestedPreviousBalanceReset/);
+});
+
+test('salvar o saldo manualmente preserva a marca de ajuste oficial', () => {
+  const handlerStart = mainSource.indexOf('async function saveBalanceSettingsFromForm');
+  const handlerEnd = mainSource.indexOf('function closingDraftFromForm', handlerStart);
+  const handler = mainSource.slice(handlerStart, handlerEnd);
+  assert.match(handler, /adjustments: \{/);
+  assert.match(handler, /\.\.\.\(state\.balanceSettings\?\.adjustments \|\| \{\}\)/);
 });

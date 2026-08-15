@@ -1277,31 +1277,40 @@ function updateBalanceInputState() {
   });
 }
 
-function applyRequestedPreviousBalanceReset() {
+function applyOfficialDpBalanceThrough20260812() {
   const settings = state.balanceSettings || {};
-  if (settings.adjustments?.removedPreviousBalance1130At) return false;
-  if (Number(settings.minutes || 0) !== 11 * 60 + 30) return false;
+  if (settings.adjustments?.officialDpBalance20260812At) return false;
+  if (settings.type !== 'none' || Number(settings.minutes || 0) !== 0) return false;
+
+  const officialBalanceMinutes = 11 * 60 + 30;
+  const officialReferenceDate = '2026-08-12';
+  const hasOfficialHistory = (settings.history || []).some((entry) => (
+    Number(entry?.minutes || 0) === officialBalanceMinutes
+    && entry?.referenceDate === officialReferenceDate
+  ));
+  if (!hasOfficialHistory) return false;
 
   const changedAt = new Date().toISOString();
+  const note = 'Saldo oficial do DP até 12/08/2026. Em 12/08, 3 horas foram abonadas e ficaram somente 6 minutos pendentes.';
   state.balanceSettings = {
     ...settings,
-    minutes: 0,
-    type: 'none',
-    referenceDate: '',
-    note: '',
+    minutes: officialBalanceMinutes,
+    type: 'positive',
+    referenceDate: officialReferenceDate,
+    note,
     updatedAt: changedAt,
     adjustments: {
       ...(settings.adjustments || {}),
-      removedPreviousBalance1130At: changedAt,
+      officialDpBalance20260812At: changedAt,
     },
     history: [
       ...(settings.history || []),
       {
         id: uuid(),
-        previousMinutes: 11 * 60 + 30,
-        minutes: 0,
-        referenceDate: '',
-        note: 'Saldo anterior de 11h30 removido temporariamente para recalcular todos os registros desde o início.',
+        previousMinutes: Number(settings.minutes || 0),
+        minutes: officialBalanceMinutes,
+        referenceDate: officialReferenceDate,
+        note,
         changedAt,
       },
     ],
@@ -1357,6 +1366,9 @@ async function saveBalanceSettingsFromForm(event) {
     referenceDate: savedReferenceDate,
     note: savedNote,
     updatedAt: changedAt,
+    adjustments: {
+      ...(state.balanceSettings?.adjustments || {}),
+    },
     history: [
       ...(state.balanceSettings?.history || []),
       { id: uuid(), previousMinutes, minutes, referenceDate: savedReferenceDate, note: savedNote, changedAt },
@@ -2177,7 +2189,7 @@ async function bootApp() {
   setStorageNamespace(state.profile.id || state.profile.cpfHash?.slice(0, 24) || 'default');
   state.schedule = loadSchedule(DEFAULT_SCHEDULE);
   state.balanceSettings = loadBalanceSettings();
-  applyRequestedPreviousBalanceReset();
+  applyOfficialDpBalanceThrough20260812();
   state.closingPeriod = loadClosingPeriodSettings();
   state.selectedReportMonth = monthKey(closingPeriodForDate(todayIso(), state.closingPeriod).startDate);
   const storedCloud = loadCloudSettings();

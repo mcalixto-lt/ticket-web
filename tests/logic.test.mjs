@@ -149,3 +149,19 @@ test('saldo acumulado sem referência considera todos os registros desde o iníc
   ];
   assert.equal(accumulatedTicketBalance(records, {}, { afterDate: '', throughDate: '2026-07-31' }), 10);
 });
+
+test('saldo oficial do DP até 12/08 soma somente os registros posteriores', () => {
+  const records = [
+    { date: '2026-08-12', punches: ['11:14', '13:14', '15:13', '18:07'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+    { date: '2026-08-13', punches: ['08:01', '13:05', '15:03', '18:08'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+    { date: '2026-08-14', punches: ['07:59', '11:15', '13:10', '18:06'], scheduleSnapshot: { expectedMinutes: 480, requiredPunches: 4 } },
+    { date: '2026-08-15', punches: ['07:57', '12:12'], scheduleSnapshot: { expectedMinutes: 240, requiredPunches: 2 } },
+  ];
+  const officialBalance = 11 * 60 + 30;
+  const ticketBalance = accumulatedTicketBalance(records, {}, {
+    afterDate: '2026-08-12',
+    throughDate: '2026-08-15',
+  });
+  assert.equal(ticketBalance, 36);
+  assert.equal(officialBalance + ticketBalance, 12 * 60 + 6);
+});
